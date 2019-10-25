@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <title>inRiver Analytics</title>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/solid.css" integrity="sha384-rdyFrfAIC05c5ph7BKz3l5NG5yEottvO/DQ0dCrwD8gzeQDjYBHNr1ucUpQuljos" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/fontawesome.css" integrity="sha384-u5J7JghGz0qUrmEsWzBQkfvc8nK3fUT7DCaQzNQ+q4oEXhGSx+P2OqjWsfIRB8QT" crossorigin="anonymous">
+	<link href="https://fonts.googleapis.com/css?family=Nunito+Sans" rel="stylesheet">
+  <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script> <!-- Chart use local later -->
+  <script>
+//THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
+var apikey = "4fc2d0c30e6c61585eb79df41201b223";
+var language = "en";
+var baseurl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+
+//ABOVE NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
+const entitiesInInRiverModel = [];
+
+//BELOW IS CODE TO THROTTLE THE NUMBER OF AJAX REQUEST SO WE DO NOT GET STOPPED BY THE API.
+
+/**
+ * ajaxthrottle.js
+ *
+ * Usage:
+ *
+ *     var t = $.ajaxthrottle({
+ *        numRequestsPerTimePeriod : N,
+ *        timePeriod               : P,
+ *        maxConcurrent            : M
+ *     });
+ *
+ *     t.ajax(args);
+ *
+ * This is just like calling $.ajax(args), except that requests are throttled
+ * so that no more than N are initiated in any time period of P milliseconds,
+ * and no more than M concurrent (outstanding at the same time) requests are allowed.
+ * If N or P is 0, there is no time period based constraint, and if M is 0, there
+ * is no constraint on the number of concurrent requests.
+ *
+ * Mark Phillips <mphillip@unca.edu>
+ * Thu Dec 20 11:04:19 2012
+ */
+(function($) {
+    $.ajaxthrottle = function(options) {
+
+        var timeout,
+
+            settings = $.extend({
+                numRequestsPerTimePeriod : 0,
+                timePeriod               : 0,
+                maxConcurrent            : 9
+            }, options),
+
+            time = function() {
+                return (new Date()).getTime();
+            },
+
+            // Array of outstanding requests; these are requests that have
+            // been initiated with a call to $.ajax() but that have not
+            // completed yet.  Each entry in this array is an object of the form
+            //    {
+            //         arguments: the original arguments list passed to .ajax()
+            //              time: the time this request was passed to $.ajax()
+            //          deferred: the jQuery deferred object for this request
+            //    }
+            outstanding_reqs = [],
+
+            // Array of initiated requests; each entry in this array
+            // is an object just like the ones in the outstanding_reqs
+            // array above, but this array keeps track of all
+            // requests, regardless of whether they have completed.
+            // This list is used to keep track of how many requests
+            // have been initiated in settings.timePeriod.  Requests
+            // that are older than settings.timePeriod milliseconds
+            // get removed from this list when it is purged.
+            initiated_reqs = [],
+
+            // Array of requests waiting to be initiated
+            waiting_reqs = [],
+
+            // Purge the initiated reqs list so that it doesn't contain any
+            // reqs from more than settings.timePeriod ms ago.  Return the
+            // amount of time that needs to be waited until the oldest remaining
+            // (after purging) req in the list will be settings.timePeriod ms old.
+            // Do all of this relative to the passed in 'now' value.
+            purge_initiated_reqs = function(now) {
+                if (settings.timePeriod >= 0) {
+                    while ((initiated_reqs.length > 0)
+                           &&
+                           (initiated_reqs[0].time + settings.timePeriod - now <= 0)) {
+                        initiated_reqs.shift();
+                    }
+                    if (initiated_reqs.length > 0) {
+                        return initiated_reqs[0].time + settings.timePeriod - now;
+                    }
+                }
+                return 0;
+            },
+
+            // remove a req from the outstanding_reqs list
+            remove_outstanding_req = function(obj) {
+                $.each(outstanding_reqs, function(i) {
+                    if (outstanding_reqs[i] === obj) {
+                        outstanding_reqs.splice(i,1);
+                        return false;
+                    }
+                    return true;
+                });
+            },
+
+            // Initiate the next request on the waiting list, unless we need to wait
+            // till some time has passed or some outstanding requests have completed.
+            process_waiting = function() {
+                var now = time(),
+                    delay, req, deferred;
+
+                if (waiting_reqs.length <= 0) {
+                    return;
+                }
+
+                delay = purge_initiated_reqs(now);
+
+                // If we have a timePeriod constraint, and the max number of allowed
+                // requests have gone out in that time period, arrange to wait for
+                // 'delay' ms
+                if ((settings.numRequestsPerTimePeriod > 0) && (settings.timePeriod > 0)
+                    &&
+                    (delay > 0)
+                    &&
+                    (initiated_reqs.length >= settings.numRequestsPerTimePeriod)) {
+                    // clear any existing timeout first, because this one will
+                    // require waiting till after it would finish anyway
+                    if (timeout !== undefined) {
+                        clearTimeout(timeout);
+                    }
+                    timeout = setTimeout(function() {
+                        timeout = undefined;
+                        process_waiting();
+                    }, delay);
+                    return;
+                }
+
+                // If the max number of allowed requests is outstanding, do nothing;
+                // process_waiting() will get called again when a request completes.
+                if ((settings.maxConcurrent > 0)
+                           &&
+                           (outstanding_reqs.length >= settings.maxConcurrent)) {
+                    return;
+                }
+
+                // If we make it to here, then it's OK to initiate the next
+                // request in the waiting list
+                req = waiting_reqs.shift();
+                req.time = time();
+                initiated_reqs.push(req);
+                outstanding_reqs.push(req);
+                $.ajax.apply($,req.arguments).done(function() {
+                    req.deferred.resolve.apply(req.deferred, arguments);
+                }).fail(function() {
+                    req.deferred.reject.apply(req.deferred, arguments);
+                }).always(function() {
+                    remove_outstanding_req(req);
+                    process_waiting();
+                });
+
+            }
+        ;
+
+        return {
+            ajax : function() {
+                var deferred = $.Deferred();
+                waiting_reqs.push({ arguments : arguments, deferred : deferred });
+                process_waiting();
+                return deferred.promise();
+            }
+        };
+    };
+}(jQuery));
+
+//SETUP THROTTLE SO WE MAX DO 9 CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
+var t = $.ajaxthrottle({
+       numRequestsPerTimePeriod : 0,
+        timePeriod               : 0,
+        maxConcurrent            : 9
+     });
+     //t.ajax(args);
+</script>
+
+<style>
+  body{
+   /* Permalink - use to edit and share this gradient: http://colorzilla.com/gradient-editor/#284081+0,732a82+100 */
+background: #284081; /* Old browsers */
+background: -moz-linear-gradient(left, #284081 0%, #732a82 100%); /* FF3.6-15 */
+background: -webkit-linear-gradient(left, #284081 0%,#732a82 100%); /* Chrome10-25,Safari5.1-6 */
+background: linear-gradient(to right, #284081 0%,#732a82 100%); /* W3C, IE10+, FF16+, Chrome26+, Opera12+, Safari7+ */
+filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#284081', endColorstr='#732a82',GradientType=1 ); /* IE6-9 */
+color: #FFF;
+  }
+
+  * { box-sizing: border-box; }
+
+a{cursor: pointer; }
+  /* Create two equal columns that floats next to each other */
+  .columnleft {
+      float: left;
+      width: 300px;
+      padding: 10px;
+     font-family: 'Nunito Sans', sans-serif;
+      font-size: 12px;
+	  color: #FFF;
+  }
+  .columnright {
+      float: left;
+      width: 450px;
+      padding: 10px;
+      margin-top: 15px;
+     font-family: 'Nunito Sans', sans-serif;
+      font-size: 12px;
+      font-weight: lighter;
+	  color: #FFF;
+	 background:rgba(255,255,255, 0.1); /* White background with 70% opacity */
+  }
+.cartcontainer{
+  width: 780px;
+  height: 400px;
+  padding: 0px;
+  margin: 10px;
+  display:inline-flex;
+  align-items: baseline;
+ font-family: 'Nunito Sans', sans-serif;
+  font-size: 12px;
+  font-weight: lighter;
+color: #FFF;
+background:rgba(255,255,255, 0.1); /* White background with 70% opacity */
+
+}
+
+  /* Clear floats after the columns */
+  .row:after {
+      content: "";
+      display: table;
+      clear: both;
+  }
+  h1{
+    font-family: 'Nunito Sans', sans-serif;
+    font-size: 20px;
+    font-weight: Extra-Bold;
+    margin-left: 15px;
+
+  }
+
+  body{
+    border:0px;
+  }
+
+  button.link {
+     /*background: #0087cc;*/
+     /*background: #732a82;*/
+     background: #1768b2;
+     border-radius: 7px;
+     /*box-shadow: 0 5px 0  #006599;*/
+     box-shadow: 0 5px 0  #001C66;
+     color: #fff;
+     cursor: pointer;
+     margin: 0;
+     outline: 0;
+     border: 0;
+     display: inline-block;
+     width: 200px;
+     height: 30px;
+     transition: all .1s linear;
+      font-size: 12px;
+      font-family: 'Nunito Sans', sans-serif;
+     }
+
+     button.link:active {
+       box-shadow: 0 2px 0 #006599;
+       transform: translateY(3px);
+     }
+  </style>
+
+  </head>
+  <body>
+	<div class="container">
+    <div class="buttoncontainer">
+    <button class="link" id="getEntitiesbutton"><i class="fas fa-file-download"></i> Load Statistics from inRiver</button>
+    <button class="link" id="showEntitiesbutton" style="display:none"><i class="fas fa-file-download"></i> Show diagram</button>
+    <span id="loader"></span>
+  </div>
+  <!--<br><br>
+  <center><img src="./img/inriver_logo_white_new.png" width="300px">	</center>
+	<br><br> -->
+  <br>
+<!-- Chart data -->
+<div class="cartcontainer">
+  <canvas id="myChart"></canvas>
+</div>
+<div class="cartcontainer">
+  <canvas id="myChart4"></canvas>
+</div>
+<div class="cartcontainer">
+  <canvas id="myChart2"></canvas>
+</div>
+<div class="cartcontainer">
+  <canvas id="myChart3"></canvas>
+</div>
+
+  </div>
+
+<script>
+    //FETCH INFORMATION FROM INRIVER
+    $('#getEntitiesbutton').on('click', () => {
+      getEntitiesInModel();
+    })
+
+    //SHOW THE DIAGRAMS WITH THE DATA FROM INRIVER
+    $('#showEntitiesbutton').on('click', () => {
+
+    console.log("Time to show");
+    /***********
+    FUNCTION TO SHOW THE DATA IN NICE DIAGRAMS
+    ************/
+    var mydata = [];
+    var mylabels = [];
+
+    //SORT THE ENTITIES BASED ON NUMBER OF ENTITIES
+    function compare(a,b) {
+      if (a.count < b.count)
+        return -1;
+      if (a.count > b.count)
+        return 1;
+      return 0;
+    }
+
+    entitiesInInRiverModel.sort(compare); // CALL THE SORT FUNCTION
+       for(var anentity in entitiesInInRiverModel){
+         if(entitiesInInRiverModel[anentity].count > 0){ // DO NOT INCUDE ENTITIES WITH 0 CREATED ENTITIES
+           mylabels.push(entitiesInInRiverModel[anentity].entityTypeId)
+           mydata.push(entitiesInInRiverModel[anentity].count)
+         }
+      }
+
+    Chart.defaults.global.defaultFontColor = 'white';
+
+    //CHART 1
+    var ctx = document.getElementById('myChart').getContext('2d');
+    var chart = new Chart(ctx, {
+    type: 'bar',
+        // The data for our dataset
+        data: {
+          labels: mylabels,
+            datasets: [{
+                label: "Entities in inRiver",
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: mydata,
+            }]
+        },
+        options: {
+
+        }
+    });
+
+    var mydataLastModifiedToday = [];
+    var mylabelsLastModifiedToday = [];
+
+       for(var anentity in entitiesInInRiverModel){
+         if(entitiesInInRiverModel[anentity].modifiedLast24h > 0){ // DO NOT INCUDE ENTITIES WITH 0 CREATED ENTITIES
+           mylabelsLastModifiedToday.push(entitiesInInRiverModel[anentity].entityTypeId)
+           mydataLastModifiedToday.push(entitiesInInRiverModel[anentity].modifiedLast24h)
+         }
+      }
+
+    var ctx2 = document.getElementById('myChart2').getContext('2d');
+    var chart2 = new Chart(ctx2, {
+    type: 'bar',
+        data: {
+          labels: mylabelsLastModifiedToday,
+            datasets: [{
+                label: "Modified last 24h in inRiver",
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                //data: [0, 10, 5, 2, 20, 30, 45],
+                data: mydataLastModifiedToday,
+            }]
+        },
+        options: {}
+    });
+
+    var mydataModifiedLast7days = [];
+    var mylabelsModifiedLast7days = [];
+
+       for(var anentity in entitiesInInRiverModel){
+         if(entitiesInInRiverModel[anentity].modifiedLast7days> 0){ // DO NOT INCUDE ENTITIES WITH 0 CREATED ENTITIES
+           mylabelsModifiedLast7days.push(entitiesInInRiverModel[anentity].entityTypeId)
+           mydataModifiedLast7days.push(entitiesInInRiverModel[anentity].modifiedLast7days)
+         }
+      }
+
+
+
+    var ctx3 = document.getElementById('myChart3').getContext('2d');
+    var chart3 = new Chart(ctx3, {
+    type: 'bar',
+        data: {
+          labels: mylabelsModifiedLast7days,
+            datasets: [{
+                label: "Modified last 7 days in inRiver",
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: mydataModifiedLast7days,
+            }]
+        },
+        options: {}
+    });
+
+    //CREATED LAST 7 DAYS
+    var mydataCreatedLast7days = [];
+    var mylabelsCreatedLast7days = [];
+
+       for(var anentity in entitiesInInRiverModel){
+         if(entitiesInInRiverModel[anentity].createdLast7days> 0){ // DO NOT INCUDE ENTITIES WITH 0 CREATED ENTITIES
+           mylabelsCreatedLast7days.push(entitiesInInRiverModel[anentity].entityTypeId)
+          mydataCreatedLast7days.push(entitiesInInRiverModel[anentity].createdLast7days)
+         }
+      }
+
+    var ctx4 = document.getElementById('myChart4').getContext('2d');
+    var chart4 = new Chart(ctx4, {
+    type: 'bar',
+        data: {
+          labels: mylabelsCreatedLast7days,
+            datasets: [{
+                label: "Created last 7 days in inRiver",
+                backgroundColor: 'rgb(255, 99, 132)',
+                borderColor: 'rgb(255, 99, 132)',
+                data: mydataCreatedLast7days,
+            }]
+        },
+        options: {}
+    });
+
+    }) //END SHOW BUTTON
+
+
+    /***********
+    FUNCTION TO GET THE AMOUT OF ENTITIES PER ENTITY TYPE
+    ************/
+    function getEntitiesInModel(){
+
+      $.ajax({
+     type: "GET",
+     beforeSend: function(request) {
+        request.setRequestHeader("X-inRiver-APIKey", apikey);
+        request.setRequestHeader("Accept", "application/json");
+        request.setRequestHeader("Accept-Language", language);
+     },
+     url: baseurl+"model/entitytypes",
+     processData: false,
+     success: function(entitytypes) {
+       console.log(entitytypes);
+       for(var entitytype in entitytypes){
+
+         var thisEntitytype = null;
+         var thisEntitytype = {entityTypeId:entitytypes[entitytype].id, entityTypeName:entitytypes[entitytype].name, count:0, modifiedLast24h:0, createdLast24h:0, modifiedLast7days:0, createdLast7days:0}
+
+         entitiesInInRiverModel.push(thisEntitytype);
+         countEntitiesInInRiver(entitytypes[entitytype].id);
+         countLastModifiedTodayEntitiesInInRiver(entitytypes[entitytype].id);
+         countLastModifiedLastWeekEntitiesInInRiver(entitytypes[entitytype].id);
+         countCreatedLastWeekEntitiesInInRiver(entitytypes[entitytype].id);
+       }
+
+     }
+    });
+
+    } //end function getEntitiesInModel()
+
+
+    function countLastModifiedTodayEntitiesInInRiver(entitytypeId){
+
+      var date = new Date();
+      date.setDate(date.getDate() - 1);
+
+        t.ajax({
+         type: "POST",
+         dataType: "json",
+         contentType: 'application/json',
+         data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"},{ "type": "LastModified","value": date, "operator": "GreaterThan"}
+       ]}),
+         beforeSend: function(request) {
+            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("Accept", "application/json");
+            request.setRequestHeader("Accept-Language", language);
+         },
+         url: baseurl+"query",
+         processData: false,
+         success: function(entitycounter) {
+           //Find the entity and update the counter based on the query.
+           const resultentity = entitiesInInRiverModel.find(entity => entity.entityTypeId === entitytypeId );
+           resultentity.modifiedLast24h = entitycounter.count;
+
+           console.log("-------------");
+           console.log("Counter modifiedLast24h:" +resultentity.modifiedLast24h);
+           console.log("-------------");
+        }
+    });
+    }
+
+    function countLastModifiedLastWeekEntitiesInInRiver(entitytypeId){
+
+      var date = new Date();
+      date.setDate(date.getDate() - 7);
+
+        t.ajax({
+         type: "POST",
+         dataType: "json",
+         contentType: 'application/json',
+         data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"},{ "type": "LastModified","value": date, "operator": "GreaterThan"}
+       ]}),
+         beforeSend: function(request) {
+            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("Accept", "application/json");
+            request.setRequestHeader("Accept-Language", language);
+         },
+         url: baseurl+"query",
+         processData: false,
+         success: function(entitycounter) {
+           //Find the entity and update the counter based on the query.
+           const resultentity = entitiesInInRiverModel.find(entity => entity.entityTypeId === entitytypeId );
+           resultentity.modifiedLast7days = entitycounter.count;
+
+           console.log("-------------");
+           console.log("Counter modifiedLast7days:" +resultentity.modifiedLast7days);
+           console.log("-------------");
+        }
+    });
+    }
+
+    function countCreatedLastWeekEntitiesInInRiver(entitytypeId){
+
+      var date = new Date();
+      date.setDate(date.getDate() - 7);
+
+        t.ajax({
+         type: "POST",
+         dataType: "json",
+         contentType: 'application/json',
+         data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"},{ "type": "Created","value": date, "operator": "GreaterThan"}
+       ]}),
+         beforeSend: function(request) {
+            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("Accept", "application/json");
+            request.setRequestHeader("Accept-Language", language);
+         },
+         url: baseurl+"query",
+         processData: false,
+         success: function(entitycounter) {
+           //Find the entity and update the counter based on the query.
+           const resultentity = entitiesInInRiverModel.find(entity => entity.entityTypeId === entitytypeId );
+           resultentity.createdLast7days = entitycounter.count;
+
+           console.log("-------------");
+           console.log("Counter createdLast7days:" +resultentity.createdLast7days);
+           console.log("-------------");
+        }
+    });
+    }
+
+    /***********
+    FUNCTION TO GET THE AMOUT OF ENTITIES PER ENTITY TYPE
+    ************/
+    function countEntitiesInInRiver(entitytypeId){
+        t.ajax({
+         type: "POST",
+         dataType: "json",
+         contentType: 'application/json',
+         data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"}]}),
+         beforeSend: function(request) {
+            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("Accept", "application/json");
+            request.setRequestHeader("Accept-Language", language);
+         },
+         url: baseurl+"query",
+         processData: false,
+         success: function(entitycounter) {
+           //Find the entity and update the counter based on the query.
+           const resultentity = entitiesInInRiverModel.find(entity => entity.entityTypeId === entitytypeId );
+           resultentity.count = entitycounter.count;
+
+           console.log("-------------");
+           console.log("Counter:" +resultentity.count);
+           console.log("-------------");
+
+           console.log(entitiesInInRiverModel.length);
+           if(entitiesInInRiverModel[entitiesInInRiverModel.length-1].entityTypeId=== entitytypeId){
+             console.log(entitiesInInRiverModel[entitiesInInRiverModel.length-1].entityTypeId);
+             	document.getElementById("showEntitiesbutton").style.display = 'inline-block';
+              document.getElementById("loader").style.display  = 'none';
+           }else{
+             document.getElementById("loader").innerHTML += '.'; //Show a load indicator.
+           }
+        }
+    });
+
+    } //end function getEntitiesInModel()
+    </script>
+  </body>
+</html>

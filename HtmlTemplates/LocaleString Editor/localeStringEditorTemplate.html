@@ -1,0 +1,32 @@
+﻿<div class="display" style="display:block">
+    <span id='display<%- id %>'> </span><i class="fa fa-pencil edit-button row-icon-button"></i>
+</div>
+<div class="editor" style="display:none">
+    <table style="float:left">
+        <tr>
+            <% if (!readonly || readonly == "") { %>
+            <td>
+                <span class='localestring-editor-label'><%- t('planner.localestringeditor.edit') %>&nbsp;</span>
+                <select id='editlanguage<%- id %>'></select>
+            </td>
+            <% } %>
+            <td>
+                <span class='localestring-editor-label'><%- t('planner.localestringeditor.view') %>&nbsp;</span>
+                <select id='viewlanguage<%- id %>' class='view'></select>
+            </td>
+        </tr>
+        <tr>
+            <% if (!readonly || readonly == "") { %>
+            <td>
+                <textarea type='text' id='text<%- id %>' />
+                <input type='hidden' id='curr<%- id %>' />
+            </td>
+            <% } %>
+            <td>
+                <textarea type='text' disabled='disabled' class='view' id='view<%- id %>' />
+            </td>
+        </tr>
+    </table>
+    <span><i class="fa fa-minus-square stopedit-button row-icon-button"></i></span>
+</div>
+

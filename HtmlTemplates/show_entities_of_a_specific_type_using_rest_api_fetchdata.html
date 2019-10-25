@@ -1,0 +1,168 @@
+﻿<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+    <meta charset="utf-8">
+    <title></title>
+    <!-- IMPORT JAVASCRIPT LIBRARIES -->
+    <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.1.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
+
+    <script type="text/javascript">
+        //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
+        var apikey = "4fc2d0c30e6c61585eb79df41201b223";
+        var language = "en";
+        var baseurl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+        //ABOVE NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
+        var completeresultarray; //Array to hold the complete result
+        var chunkedresultarray; //Array to hold chunks 999 entities per nested array of the reult
+        var entityvaluesarray; //Array to store all field values
+        var responsecount = 0;
+        var entityType = "Product";
+
+        /**** Split result into smaller parts/arrays so we can use fetch endpoint to fetch the data ****/
+        const chunk = (arr, size) =>
+            Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+                arr.slice(i * size, i * size + size)
+            );
+
+        function fetchentitiesfromquery() {
+
+            /***********************/
+            //Example of getting all entites of a specific type.
+            var query = '{"systemCriteria":[{"type": "EntityTypeId","value": "' + entityType + '", "operator": "Equal"}]}';
+
+            $.ajax({
+                type: "POST",
+                dataType: "json",
+                contentType: 'application/json',
+                data: query,
+                beforeSend: function (request) {
+                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("Accept", "application/json");
+                    request.setRequestHeader("Accept-Language", language);
+                    document.getElementById("demo").innerHTML = "Fetching data";
+
+                },
+                url: baseurl + "query",
+                processData: false,
+                success: function (inriverentity) {
+                    console.log("Sucess");
+                    console.log(inriverentity);
+                    completeresultarray = inriverentity.entityIds; //Get the SystemIds in the result of the query.
+                    responsecount = inriverentity.count; //get the total number of entities returned.
+                    chunkedresultarray = chunk(inriverentity.entityIds, 1000); // split the result so we have 999 entites per array.
+                    //console.log(chunkedresultarray);
+                    console.log(chunkedresultarray.length);
+                }, error: function (xhr) { // if error occured
+                    console.log("Error occured.please try again");
+                },
+                complete: function () {
+                    //$(placeholder).removeClass('loading');
+                    console.log("Completed found: " + responsecount);
+                    document.getElementById("demo").innerHTML = "Completed recieved: " + responsecount + " entities";
+                    document.getElementById("context").innerHTML = ""; //Clean div before population.
+
+                    for (var i = 0; i < chunkedresultarray.length; i++) {
+                        var buttonname = "myfetchBtn" + i;
+                        document.getElementById("context").innerHTML += '<button id="' + buttonname + '" onclick="fetchvaluesfromentities(' + i + ')">Get data from ' + i + '</button> ';
+                    }
+                }
+            });
+
+        } // end function fetchentitiesfromquery()
+
+
+
+        function fetchvaluesfromentities(i) {
+            var fetchvalues = '{"entityIds":[' + chunkedresultarray[i] + '], "objects": "EntitySummary,FieldValues", "fieldTypeIds": "ProductDescription,ProductName"}';
+
+            $.ajax({
+                type: "POST",
+                dataType: "json",
+                contentType: 'application/json',
+                data: fetchvalues,
+                beforeSend: function (request) {
+                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("Accept", "application/json");
+                    request.setRequestHeader("Accept-Language", language);
+                    document.getElementById("demo").innerHTML = "Fetching values";
+
+                },
+                url: baseurl + "entities:fetchdata",
+                processData: false,
+                success: function (inriverresult) {
+                    console.log("Sucess");
+                    console.log(inriverresult);
+                    entityvaluesarray = inriverresult;
+                    //completeresultarray = inriverresult; //Get the SystemIds in the result of the query.
+                }, error: function (xhr) { // if error occured
+                    console.log("Error occured.please try again");
+                },
+                complete: function () {
+                    console.log("Completed found: " + entityvaluesarray.length);
+                    document.getElementById("demo").innerHTML = "Completed recieved: " + entityvaluesarray.length + " entities";
+                    var stringifier = "";
+                    for (var i = 0; i < entityvaluesarray.length; i++) {
+                        //Check if an image is available then show it.
+                        if (entityvaluesarray[i].summary.resourceUrl != null) {
+                            stringifier = stringifier + "<div class='chip'><img src='" + entityvaluesarray[i].summary.resourceUrl + "/SmallThumbnail' alt='product'>" + entityvaluesarray[i].summary.displayName + "</div>";
+                        } else {
+                            stringifier = stringifier + "<div class='chip'><img src='https://via.placeholder.com/50' alt='product'>" + entityvaluesarray[i].summary.displayName + "</div>";
+                        }
+                    }
+                    document.getElementById("response").innerHTML = "<p>" + stringifier + "</p>";
+                    stringifier = "";
+                }
+            });
+
+        } // end function fetchvaluesfromentities()
+    </script>
+
+    <style>
+        button {
+            border-radius: 0.25rem;
+            background: #F6F6F6;
+            color: black;
+            font-family: system-ui, sans-serif;
+            font-size: 1rem;
+            line-height: 1.2;
+            white-space: nowrap;
+            text-decoration: none;
+            margin: 0.25rem;
+            cursor: pointer;
+        }
+
+        .chip {
+            display: inline-block;
+            padding: 0 25px;
+            height: 50px;
+            font-size: 16px;
+            line-height: 50px;
+            border-radius: 25px;
+            background-color: #f1f1f1;
+            margin: 15px;
+        }
+
+            .chip img {
+                float: left;
+                margin: 0 10px 0 -25px;
+                height: 50px;
+                width: 50px;
+                border-radius: 50%;
+            }
+    </style>
+</head>
+<body>
+    <button id="myBtn">Fetch entities from inRiver</button>
+    <p id="demo"></p>
+    <div id="context"></div>
+    <div id="response"></div>
+
+    <script>
+        //Initial button shown to fetch data.
+        document.getElementById("myBtn").addEventListener("click", function () {
+            fetchentitiesfromquery();
+        });
+    </script>
+</body>
+</html>

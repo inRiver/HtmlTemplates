@@ -1,0 +1,405 @@
+﻿
+
+.entity-settings-fixed-header-row {
+    background: #fff;
+  /*  border-bottom: 1px solid #ccc;*/
+    width: 100%;
+}
+
+.date-time-editor-text-box {
+    max-width: 150px;
+}
+
+#inriver-fields-form-area .category-section-title {
+    padding-left: 0 !important;
+}
+
+#inriver-fields-form-area .category-section-title .showCategory {
+    margin-left: 5px;
+}
+
+#category-section-edit-icon {
+    margin-left: 8px;
+    font-size: 14px;
+}
+
+#inriver-fields-form-area > form fieldset {
+    padding: 5px;
+}
+
+#inriver-fields-form-area form fieldset > span {
+    margin-left: 10px;
+    float: left;
+}
+
+#inriver-fields-form-area form fieldset > span:empty {
+    display: none;
+}
+
+#inriver-fields-form-area form fieldset > span:before { 
+    content: "("; 
+}
+
+#inriver-fields-form-area form fieldset > span:after {
+    content: ")";
+}
+
+#inriver-fields-form-area > form .field-editor-wrap {
+    background: #fff;
+    padding: 5px 15px;
+    margin: 3px 0;
+    width: 97%;
+}
+
+#inriver-fields-form-area > form .field-editor-wrap .width-limited-container .display {
+    line-height: 25px;
+    max-width: 800px;
+    float: left;
+}
+
+#inriver-fields-form-area > form .field-editor-history-wrap {
+    display: none;
+}
+
+#inriver-fields-form-area > form .field-editor-history-container {
+    display: inline-block;
+    background: #fff;
+    margin-left: 266px;
+    padding: 10px 10px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+    border-style: solid;
+}
+
+#inriver-fields-form-area > form .field-editor-history-container table {
+    margin: 0 !important;
+}
+
+#inriver-fields-form-area > form .field-editor-history-container td, #inriver-fields-form-area > form .field-editor-history-container th {
+    padding: 0 10px;
+}
+
+
+#inriver-fields-form-area > form .field-editor-label-wrap {
+    float: left;
+    width: 250px;
+    line-height: 27px;
+}
+
+#inriver-fields-form-area > form #view-history-button {
+    float: right;
+    margin-right: 15px;
+}
+
+#inriver-fields-form-area > form #hide-history-button {
+    display: none;
+    float: right;
+    margin-right: 15px;
+}
+
+#inriver-fields-form-area > form .field-editor-label {
+    float: left;
+}
+
+/*#inriver-fields-form-area input[type=text],
+#inriver-fields-form-area select,
+#inriver-fields-form-area textarea, 
+input[type=text].filter {
+    padding: 5px;
+   
+    border: 1px #ccc solid;
+}*/ 
+
+
+#inriver-fields-form-area > form fieldset ul {
+    /*-webkit-padding-start: 0;*/
+    margin: 0;
+    padding: 0;
+}
+
+/* inline checkboxes*/
+#inriver-fields-form-area > form fieldset li {
+    display: inline-block;
+    white-space: nowrap;
+    margin-right: 5px;
+    padding: 3px;
+}
+
+.ms-drop ul li {
+    padding: 0 !important;
+    margin: 3px;
+}
+
+/* inline checkboxes*/
+#inriver-fields-form-area > form > div > fieldset > div > div li label {
+    width: auto;
+    float: none;
+}
+
+/* checkbox dropdown */
+#inriver-fields-form-area form fieldset .ms-parent li {
+    display: block;
+}
+
+.inriver-fields-form-area-alternative-field-background {
+    background-color: #f4f4f4 !important;
+}
+
+.localestring-editor-label {
+    font-weight: bold;
+    color: #333;
+}
+
+.display textarea {
+    min-height: 30px;
+}
+
+#inriver-fields-form-area input[type=text] {
+    width: 400px;
+}
+
+
+#inriver-fields-form-area input[type=checkbox] + label, #inriver-fields-form-area input[type=radio] + label {
+  color: #999;
+  font-style: normal;
+} 
+
+#inriver-fields-form-area input[type=checkbox]:checked + label, #inriver-fields-form-area input[type=radio]:checked + label {
+  color: #000000;
+  font-style: normal;
+}
+
+
+#inriver-fields-form-area input[type=checkbox]:disabled + label, #inriver-fields-form-area input[type=radio]:disabled + label {
+  color: #ccc;
+  font-style: normal;
+}
+
+#inriver-fields-form-area input[type=checkbox]:disabled:checked + label, #inriver-fields-form-area input[type=radio]:disabled:checked + label {
+  color: #999;
+  font-style: normal;
+}
+
+#inriver-fields-form-area .field-editor-save-undo-wrapper {
+    display: none;
+    float: right;
+    color: #999;
+    margin-right: 15px;
+}
+
+#inriver-fields-form-area .field-editor-save-undo-wrapper span {
+    cursor: pointer;
+    padding-left: 3px;
+}
+
+#inriver-fields-form-area .select-all-cvl-values-checkbox-wrap {
+    float: left;
+    margin: 0 3px 0 0;
+    padding: 3px;
+}
+
+#inriver-fields-form-area .select-all-cvl-values-checkbox-wrap label {
+    /*font-weight: bold;*/
+    font-style: italic;
+}
+
+
+.fieldset-field {
+    color: #333333 !important;
+}
+
+.field-editor-validation-error-message {
+    clear: both;
+    color: #a52a2a;
+}
+
+.fieldUpdated {
+    font-weight: bold;
+    color: #0071a5  !important; 
+}
+input.fieldUpdated, select.fieldUpdated, textarea.fieldUpdated, label.fieldUpdated,span.fieldUpdated {
+    border-color: #0071a5 !important; 
+    font-weight: bold;
+}
+
+/*
+fieldset > div:nth-child(even) {
+    background: #f0f0f0 !important;
+}*/
+
+.editor textarea {
+    min-height: 30px;
+    min-width: 400px;
+}
+
+/*
+.popup-wrap .entity-details-wrap {
+    position: absolute;
+    bottom: 10px;
+    top: 70px;
+    left: 15px;
+    right: 15px;
+}*/
+
+
+
+.popup-wrap .details-view-tools-row {
+    top: 70px;
+    right: 15px;
+    width: auto;
+    left: 15px;
+    padding: 5px 0 5px 0;
+}
+
+.popup-wrap #details-view-wrap {
+    overflow-y: auto;
+    position: absolute;
+    top: 110px;
+    bottom: 10px;
+    width: auto;
+    right: 15px;
+    left: 15px;
+}
+/*
+.popup-wrap #inriver-fields-form-area {
+    width: 100%;
+    top: 40px;
+    bottom: 10px;
+}*/
+
+.popup-wrap #inriver-fields-form-area {
+    bottom: 10px;
+    top: 80px;
+    left: 14px;
+    right: 14px;
+    overflow-x: auto;
+}
+
+#inriver-fields-form-area{
+    position: absolute;
+}
+
+
+#details-view-wrap, #specification-template-view-wrap {
+    overflow-y: auto;
+    position: absolute;
+    top: 70px;
+    bottom: 0;
+    width: 100%;
+}
+
+
+#entity-detail-settings-save-all-button,
+#entity-detail-settings-undo-all-button {
+    display: none;
+}
+
+#entity-detail-settings-expand,
+#entity-detail-settings-collapse,
+#entity-detail-settings-undo-all-button,
+#entity-detail-settings-save-all-button,
+.details-view-tools-row #open-template-button,
+.details-view-tools-row #copy-from-button,
+.details-view-tools-row #copy-to-button,
+.details-view-tools-row #select-template-button,
+.details-view-tools-row #expand,
+.details-view-tools-row #collapse
+ {
+    margin-right: 10px;
+    float: right;
+}
+
+#entity-detail-settings-fieldset-dropdown-wrap {
+    margin-left: 10px;
+    float: left;
+}
+
+#entity-detail-settings-segments-dropdown-wrap {
+    margin-left: 10px;
+    float: left;
+}
+
+#entity-detail-settings-segments-dropdown-wrap select {
+    margin-left: 10px;
+}
+
+#entity-detail-settings-fieldset-dropdown-wrap form > div {
+    display: inline-block;
+    margin-left: 10px;
+}
+
+
+.details-view-tools-row #selected-template-name {
+    /*padding-top: 7px;*/
+}
+
+#details-view-wrap #inriver-fields-form-area {
+    position: inherit!important;
+    height: 100%;
+}
+
+#details-view-wrap #main-client-area {
+    height: 100%
+}
+
+#details-view-wrap > div:first-of-type {
+    height: 100%
+}
+
+/*#entity-detail-settings-fieldset-form div {
+    display: inline-block;
+}
+
+#entity-detail-settings-fieldset-form li {
+    display: inline-block;
+}
+
+#entity-detail-settings-fieldset-form span {
+    margin-right: 10px;
+}
+
+#entity-detail-settings-fieldset-form select {
+    margin-right: 10px;
+    padding: 3px;
+    min-width: 150px;
+}*/
+
+#inriver-fields-form-area > form select {
+    min-width: 150px;
+}
+
+.details-view-tools-row {
+    padding: 5px 20px 5px 0;
+    position:absolute;
+    line-height: 29px;
+    width: 100%;
+    background: #fff;
+    border-bottom: 1px solid #bbb;
+    display: inline-block;
+    z-index:11;
+}
+
+#category-field-container {
+    padding: 2px 0;
+    /*margin-top: 5px;*/
+    margin-bottom: 5px;
+}
+
+/*#add-specification-field, #add-specification-category {
+    margin-left: 5px;
+}*/
+
+#specification-template-expand, 
+#specification-template-collapse,
+#specification-template-add-unit,
+#specification-template-manage-categories,
+#specification-template-show-all-entities,
+#add-specification-field,
+#add-specification-category {
+    float: right;
+    margin-right: 10px;
+}
+
+#segmentation-select {
+    max-width: 300px;
+}
