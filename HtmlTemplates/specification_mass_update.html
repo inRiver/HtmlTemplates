@@ -657,7 +657,7 @@
                                     if (i == 0) {
                                         elementId = ' id="focusPoint"';
                                     }
-                                    fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '" onclick="fieldTypesSelected()"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
+                                    fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '" onclick="fieldTypesSelected(\'' + specificationFieldsArray[i].id + '\')"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
                                 }
                             }
                         }
@@ -696,7 +696,7 @@
         }
 
 
-        function fieldTypesSelected() {
+        function fieldTypesSelected(specificationFieldId) {
             var checkedFieldTypeIds = [];
             $("#fieldtypeselection input:checked").each(function () {
                 checkedFieldTypeIds.push($(this).val());
@@ -712,44 +712,22 @@
             console.log(checkedFieldTypeIds);
             console.log(specificationFieldsArray);
 
+            var selector = '#newValueFieldEdit > #tr_' + specificationFieldId;
             var newValueFieldEditHtml = "";
-            for (var id in checkedFieldTypeIds) {
-                var specificationField = specificationFieldsArray.find(function (specField) {
-                    return specField.id === checkedFieldTypeIds[id];
-                });
 
-                console.log("Found specificationField for id = " + checkedFieldTypeIds[id]);
-                console.log(specificationField);
-
-                newValueFieldEditHtml += "<tr>";
-                newValueFieldEditHtml += "<td>";
-                if (showDataType) {
-                    newValueFieldEditHtml += specificationField.name.en + " (" + specificationField.dataType + ")";
-                } else {
-                    newValueFieldEditHtml += specificationField.name.en;
-                }
-                if (specificationField.unit !== null && specificationField.unit.length > 0) {
-                    newValueFieldEditHtml += "&nbsp;(" + specificationField.unit + ")";
-                }
-                if (specificationField.isMandatory) {
-                    newValueFieldEditHtml += "*";
-                }
-                newValueFieldEditHtml += "</td>";
-
-                newValueFieldEditHtml += "<td>";
-                if (specificationField.dataType === "CVL") {
-                    newValueFieldEditHtml += renderCVLHtml(specificationField.cvlId, specificationField.id);
-                } else if (specificationField.dataType === "Boolean") {
-                    newValueFieldEditHtml += renderBooleanHtml(specificationField.id);
-                } else if (specificationField.dataType === "LocaleString") {
-                    newValueFieldEditHtml += renderLocaleStringHtml(specificationField.id);
-                } else {
-                    newValueFieldEditHtml += renderFieldHtml(specificationField.id, specificationField.dataType);
-                }
-                newValueFieldEditHtml += "</td>";
+            if (checkedFieldTypeIds.find(function (id) {
+                return specificationFieldId === id;
+            }) === undefined) {
+                $(selector).remove();
+            } else if ($(selector).html() !== undefined) {
+                $(selector).html(generateFieldTypeRow(specificationFieldId));
+            } else {
+                newValueFieldEditHtml += '<tr id="tr_' + specificationFieldId + '">';
+                newValueFieldEditHtml += generateFieldTypeRow(specificationFieldId);
                 newValueFieldEditHtml += "</tr>";
+
+                $('#newValueFieldEdit').append(newValueFieldEditHtml);
             }
-            document.getElementById("newValueFieldEdit").innerHTML = newValueFieldEditHtml;
 
             for (var id in checkedFieldTypeIds) {
                 var specificationField = specificationFieldsArray.find(function (specField) {
@@ -761,6 +739,40 @@
             }
 
             $('#focusPoint').focus();
+        }
+
+        function generateFieldTypeRow(specificationFieldId) {
+            var specificationField = specificationFieldsArray.find(function (specField) {
+                return specField.id === specificationFieldId;
+            });
+
+            var newValueFieldEditHtml = "<td>";
+            if (showDataType) {
+                newValueFieldEditHtml += specificationField.name.en + " (" + specificationField.dataType + ")";
+            } else {
+                newValueFieldEditHtml += specificationField.name.en;
+            }
+            if (specificationField.unit !== null && specificationField.unit.length > 0) {
+                newValueFieldEditHtml += "&nbsp;(" + specificationField.unit + ")";
+            }
+            if (specificationField.isMandatory) {
+                newValueFieldEditHtml += "*";
+            }
+            newValueFieldEditHtml += "</td>";
+
+            newValueFieldEditHtml += "<td>";
+            if (specificationField.dataType === "CVL") {
+                newValueFieldEditHtml += renderCVLHtml(specificationField.cvlId, specificationField.id);
+            } else if (specificationField.dataType === "Boolean") {
+                newValueFieldEditHtml += renderBooleanHtml(specificationField.id);
+            } else if (specificationField.dataType === "LocaleString") {
+                newValueFieldEditHtml += renderLocaleStringHtml(specificationField.id);
+            } else {
+                newValueFieldEditHtml += renderFieldHtml(specificationField.id, specificationField.dataType);
+            }
+            newValueFieldEditHtml += "</td>";
+
+            return newValueFieldEditHtml;
         }
 
         function renderCVLHtml(cvlId, specificationFieldTypeId) {
@@ -803,10 +815,10 @@
         function renderLocaleStringHtml(specificationFieldTypeId) {
             var localeStringHtml = '<div class="row">';
             allLanguages.forEach(function (language) {
-                localeStringHtml += '<div class="col-lg-2"/>';
+                localeStringHtml += '<div class="col-lg-2">';
                 localeStringHtml += language.displayName + ':';
                 localeStringHtml += '</div>';
-                localeStringHtml += '<div class="col-lg-10"/>';
+                localeStringHtml += '<div class="col-lg-10">';
                 localeStringHtml += '<textarea rows="3" id="' + specificationFieldTypeId + ':' + language.name + '" cols="80"></textarea>';
                 localeStringHtml += '</div>';
             });
