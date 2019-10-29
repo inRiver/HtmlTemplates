@@ -17,7 +17,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.1/moment.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.7.14/js/bootstrap-datetimepicker.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.7.14/css/bootstrap-datetimepicker.min.css">
-
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js" ></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
 
     <style type="text/css">
         table {
@@ -31,33 +33,56 @@
             text-align: left;
             padding: 8px;
         }
-
-        ul {
+        
+        #fieldtypeselection > ul {
             list-style-type: none;
-            /*display: grid;
-        grid-template-columns: 1fr 1fr 1fr;*/
             column-count: 3;
         }
 
-            ul li {
-                position: relative;
-            }
+        #fieldtypeselection > ul li {
+            position: relative;
+        }
 
-                ul li > ul {
-                    top: -12px;
-                    left: 190px;
-                    position: absolute;
-                    visibility: hidden;
-                    z-index: 1;
-                    background: #ffffff;
-                    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-                    list-style: none;
-                    width: 190px;
-                    padding: 10px 0;
-                    font-size: 14px;
-                    line-height: 16px;
-                    letter-spacing: .02em;
-                }
+        #fieldtypeselection > ul li > ul {
+            top: -12px;
+            left: 190px;
+            position: absolute;
+            visibility: hidden;
+            z-index: 1;
+            background: #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+            list-style: none;
+            width: 190px;
+            padding: 10px 0;
+            font-size: 14px;
+            line-height: 16px;
+            letter-spacing: .02em;
+        }
+
+        #newValueFieldEdit ul {
+            list-style-type: none;
+            column-count: 3;
+        }
+
+        #newValueFieldEdit ul li {
+            position: relative;
+        }
+
+        #newValueFieldEdit ul li > ul {
+            top: -12px;
+            left: 190px;
+            position: absolute;
+            visibility: hidden;
+            z-index: 1;
+            background: #ffffff;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+            list-style: none;
+            width: 190px;
+            padding: 10px 0;
+            font-size: 14px;
+            line-height: 16px;
+            letter-spacing: .02em;
+        }
 
         #valueFieldEditDiv {
             overflow: hidden;
@@ -339,25 +364,47 @@
                 complete: function () {
                     console.log("Completed found: " + workareasarray.length);
 
-                    var workareasselectorhtml = '<select id="workareaselector" onchange="fetchspecifications(this.value)">';
-                    workareasselectorhtml += '<option value="none">-</option>';
+                    var workareasselectorhtml = '<div id="workareaselector">';
+                    workareasselectorhtml += '<ul>';
                     for (var i = 0; i < workareasarray.length; i++) {
                         if (workareasarray[i].folders !== undefined) {
-                            workareasselectorhtml += '<option value="' + workareasarray[i].id + '" class="optionGroup" >' + workareasarray[i].name + '</option>';
-                            for (var j = 0; j < workareasarray[i].folders.length; j++) {
-                                workareasselectorhtml += '<option value="' + workareasarray[i].folders[j].id + '" >&nbsp;&nbsp;-&nbsp;' + workareasarray[i].folders[j].name + '</option>';
-                            }
+                            workareasselectorhtml += renderWorkareaSubLevels(workareasarray[i]);
                         }
                         else {
-                            workareasselectorhtml += '<option value="' + workareasarray[i].id + '">' + workareasarray[i].name + '</option>';
+                            workareasselectorhtml += '<li value="' + workareasarray[i].id + '" >' + workareasarray[i].name + '</li>';
                         }
-                        
                     }
-                    workareasselectorhtml += "</select>";
+                    workareasselectorhtml += "</ul>";
+                    workareasselectorhtml += "</div>";
 
                     document.getElementById("workareaselection").innerHTML = workareasselectorhtml;
+
+                    $('#workareaselector').jstree({
+                        'plugins': ["wholerow", "types"]
+                    });
+
+                    $('#workareaselector').on("changed.jstree", function (e, data) {
+                        console.log(data.node.li_attr.value);
+                        fetchspecifications(data.node.li_attr.value);
+                    });
                 }
             });
+        }
+
+        function renderWorkareaSubLevels(workarea) {
+            var workareasselectorhtml = '<li value="' + workarea.id + '">' + workarea.name;
+            workareasselectorhtml += '<ul>';
+            for (var j = 0; j < workarea.folders.length; j++) {
+                if (workarea.folders[j].folders !== undefined) {
+                    workareasselectorhtml += renderWorkareaSubLevels(workarea.folders[j]);
+                } else {
+                    workareasselectorhtml += '<li value="' + workarea.folders[j].id + '" >' + workarea.folders[j].name + '</li>';
+                }
+            }
+            workareasselectorhtml += "</ul>";
+            workareasselectorhtml += "</li>";
+
+            return workareasselectorhtml;
         }
 
         function fetchAllCvls() {
@@ -374,17 +421,11 @@
                 url: baseurl + "model/cvls",
                 processData: false,
                 success: function (cvls) {
-                    //console.log("Success fetch all cvls");
-                    //console.log(cvls);
-
                     cvls.forEach(function (item, index) {
                         var cvlWithValues = item;
                         cvlWithValues.values = [];
                         allCvls.push(cvlWithValues);
                     });
-
-                    //console.log("All cvls with values");
-                    //console.log(allCvls);
                 },
                 error: function (xhr) {
                     console.log("Error occured.please try again");
@@ -1089,12 +1130,12 @@
                     </div>
                 </div>
             </div>
-            <div class="row">
-                <div class="col-lg-12">
-                    <br />
-                    <br />
-                    <br />
-                </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-12">
+                <br />
+                <br />
+                <br />
             </div>
         </div>
     </div>
