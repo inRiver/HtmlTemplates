@@ -1,6 +1,6 @@
 # HtmlTemplates
 
-This repository should contain usefull HtmlTemplates. By usefull means that it should be in such nature that one can learn something from them.
+This repository contains usefull HtmlTemplates. By usefull means that it should be in such nature that one can learn something from them.
 
 # Specification Mass Update 
 specification_mass_update.html
