@@ -331,6 +331,7 @@
         var specificationLinkTypeIds = "ProductSpecifications,Item2SpecificationCorrect";
         var allLanguages;
         var showDataType = false;
+        var specifications = new Object();
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -508,13 +509,7 @@
                     url: baseurl + "model/cvls/" + cvlId + "/values",
                     processData: false,
                     success: function (cvlValues) {
-                        //console.log("Success fetch all cvlValues for cvlId " + cvlId);
-                        //console.log(cvlValues);
-
                         cvl.values = cvlValues;
-
-                        //console.log("All cvls with values");
-                        //console.log(allCvls);
                     },
                     error: function (xhr) {
                         console.log("Error occured.please try again");
@@ -528,7 +523,7 @@
 
             if (value === "none") return;
 
-            var foundEntitiesShort;
+            var foundEntities;
             $.ajax({
                 type: "GET",
                 dataType: "json",
@@ -542,10 +537,10 @@
                 url: baseurl + "workareafolder/" + value + "/entitylist",
                 processData: false,
                 success: function (entitylist) {
-                    foundEntitiesShort = entitylist;
+                    foundEntities = entitylist;
 
                     console.log("foundEntitiesShort:");
-                    console.log(foundEntitiesShort);
+                    console.log(foundEntities);
                 }, error: function (xhr) {
                     console.log("Error occured.please try again" + xhr);
                 },
@@ -555,15 +550,27 @@
 
                     document.getElementById("specificationtemplateselection").innerHTML = '<div class="loader" />';
 
-                    getspecificationnames(foundEntitiesShort.entityIds);
+                    hideSelectFields();
+
+                    specifications = new Object();
+                    var chunkedFoundEntityIds = chunk(foundEntities.entityIds, 200);
+                    console.log('chunkedFoundEntityIds');
+                    console.log(chunkedFoundEntityIds);
+                    let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
+                    process.done(results => {
+                        fillspecificationnames(specifications);
+                    });
                 }
             });
         }
 
-        function getspecificationnames(entityIds) {
-            hideSelectFields();
-            var specifications = new Object();
-            $.ajax({
+        const chunk = (arr, size) =>
+            Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+                arr.slice(i * size, i * size + size)
+            );
+
+        function getSpecificationNamesForEntityIds(entityIds) {
+            return $.ajax({
                 type: "POST",
                 dataType: "json",
                 contentType: 'application/json',
@@ -608,14 +615,73 @@
                     console.log(specifications);
                 }, error: function (xhr) {
                     console.log("Error occured.please try again: " + xhr);
-                },
-                complete: function () {
-                    fillspecificationnames(specifications);
                 }
-            });
+            })
+            .done(result => ({}))
+            .fail((_xhr, text) => ({}));
+        }
+
+        // https://codereview.stackexchange.com/questions/174310/process-array-with-x-parallel-executions
+        function forEachParallel(arrayOfChunks, processChunksFunction, threads) {
+            if (!$.isArray(arrayOfChunks)) throw new TypeError('First parameter must be an array');
+            if (!$.isFunction(processChunksFunction)) throw new TypeError('Second parameter must be a function');
+            if (!$.isNumeric(threads)) throw new TypeError('Third parameter must be a number');
+
+            // The number of threads must be an integer
+            threads = parseInt(threads);
+
+            let masterDeferred = new $.Deferred();
+            // To hold the result of each func(arr[i]) call
+            let results = [];
+            // To hold the deferreds that must be resolved before resolving masterDeferred
+            let processes = [];
+            let percentComplete = 0;
+
+            // Map the input arr into an array of objects to preserve the index information.
+            var queue = arrayOfChunks.map((value, index) => ({ index, value }));
+
+            // Create a new "process" for each item in the queue, up to the thread limit
+            for (let i = 0; i < Math.min(queue.length, threads); i++) {
+                // Note: Don't blindly change `let` to `var` here or this will break
+                // this depends on block scoping.
+                let process = new $.Deferred();
+                processes.push(process.promise());
+
+                (function next() {
+                    // Get the next item in the queue
+                    let item = queue.shift();
+                    if (!item) {
+                        // If no items were found, this process is done.
+                        process.resolve();
+                        return;
+                    }
+
+                    // Call the function with the value at this index
+                    processChunksFunction(item.value)
+                        // Then update the results with the result
+                        .done(result => results[item.index] = result)
+                        .done(() => {
+                            // Update percentage, calling any progress listeners
+                            let newPercentage = Math.floor((arrayOfChunks.length - queue.length) * 100 / arrayOfChunks.length);
+                            if (newPercentage > percentComplete) {
+                                percentComplete = newPercentage;
+                                masterDeferred.notify(percentComplete);
+                            }
+                            // Loop
+                            next();
+                        });
+                }());
+            }
+
+            // Resolve the returned deferred value once processing is complete
+            $.when(...processes).done(() => masterDeferred.resolve(results));
+
+            return masterDeferred.promise();
         }
 
         function fillspecificationnames(specifications) {
+            console.log('fillspecificationnames() called');
+
             var specificationnamesselectorhtml = '<select id="specificationnameselector" onchange="displayspecificationfields(this.value)">';
             specificationnamesselectorhtml += '<option value="none">-</option>';
             for (var key in specifications) {
