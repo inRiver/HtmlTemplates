@@ -1,0 +1,193 @@
+﻿<html inriver-razor-template="true">
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.2.3/backbone.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Ubuntu:300,400" />
+
+</head>
+
+
+<script>
+    $( function() {
+      $( "#tabs" ).tabs();
+    } );
+</script>
+
+      @{
+  	  	var categories = new List
+<string>
+    { "General" };
+    foreach (var field in Model.Fields)
+    {
+    var categoryId = field.FieldType.CategoryId;
+    if (!categories.Contains(categoryId))
+    {
+    categories.Add(categoryId);
+    }
+    }
+    var statuses = new List<string>
+        { "Redyforpublish", "Under Enrichment", "Ready for Approval", "Approved", "Ready to Publish" };
+        // var statuses = new List<string>
+            { "Not Started", "In Progress", "Under Review", "On Hold", "Rejected", "Complete" };
+            }
+
+
+
+            <style type="text/css">
+
+                .tab {
+                    font-family: 'Lato', Arial, sans-serif;
+                    font-size: 13px;
+                }
+
+                table {
+                    border-collapse: collapse;
+                }
+
+                    table .stat {
+                        border: 0px;
+                    }
+
+
+
+
+                td {
+                    padding-right: 15px;
+                    padding-top: 3px;
+                    padding-bottom: 3px;
+                    border: 1px solid #ddd;
+                    border-collapse: collapse;
+                }
+
+                .tdleft {
+                    font-weight: bold;
+                    border: 1px solid #ddd;
+                    border-collapse: collapse;
+                    -webkit-column-width: 500px; /* Chrome, Safari, Opera */
+                    -moz-column-width: 500px; /* Firefox */
+                    column-width: 500px;
+                }
+
+                .tdlabel {
+                    font-weight: bold;
+                    -webkit-column-width: 400px; /* Chrome, Safari, Opera */
+                    -moz-column-width: 400px; /* Firefox */
+                    column-width: 400px;
+                }
+
+                .newColGreen {
+                    background-color: green;
+                }
+
+
+
+                .newColNone {
+                    border: 0px solid #ddd;
+                    border-collapse: collapse;
+                }
+
+                tr {
+                    padding-top: 15px;
+                    padding-bottom: 15px;
+                }
+
+                #attributes tr:nth-child(even) {
+                    background-color: #f2f2f2;
+                }
+
+                #stat tr:nth-child(even) {
+                    background-color: #f2fff2;
+                }
+
+                #attributes td {
+                    border: 1px solid #ddd;
+                    border-collapse: collapse;
+                }
+            </style>
+
+
+
+            <body>
+                <div id="tabs">
+                    <ul>
+                        @foreach (var category in categories)
+                        {
+                        <li><a href=#@category>@category</a></li>
+                        }
+                    </ul>
+                    @foreach (var category in categories)
+                    {
+                    <div id='@category'>
+                        <div>
+                            <img style='max-width: 250px; float:right;border-style:solid;border-width:10px;border-color:white;' src='@Model.MainPictureUrl' />
+                        </div>
+                        <table id='attributes'>
+                            @{
+                            var myFields = new List
+                            <inRiver.Remoting.Objects.Field>
+                                ();
+                                foreach (var field in Model.Fields)
+                                {
+                                if (field.FieldType.CategoryId == category)
+                                {
+                                myFields.Add(field);
+                                }
+                                }
+                                foreach (var field in myFields)
+                                {
+                                <tr>
+                                    <td class='tdleft'>
+                                        @TemplateHelper.FieldTypeName(field.FieldType.Id)
+                                    </td>
+                                    <td>
+                                        @TemplateHelper.FieldValue(Model, field.FieldType.Id)
+                                    </td>
+                                    <td>
+                                        @TemplateHelper.FieldEditor(Model, field.FieldType.Id)
+                                    </td>
+                                </tr>
+                                }
+                                }
+                        </table>
+                        @if (category == "General")
+                        {
+                        <br /><hr /><br />
+                        <table id='stat' border='0'>
+                            @foreach (var field in Model.Fields)
+                            {
+                            var colStatus = "newColGreen";
+                            var fieldName = TemplateHelper.FieldTypeName(field.FieldType.Id).ToString();
+                            if (fieldName.Contains("Status"))
+                            {
+                            var fieldValue = TemplateHelper.FieldValue(Model, field.FieldType.Id).ToString();
+                            <tr>
+                                <td class=tdlabel>@fieldName</td>
+                                @if (string.IsNullOrEmpty(fieldValue))
+                                {
+                                colStatus = "newColNone";
+                                <td width='50px' class='newColNone'>&nbsp;</td>
+                                }
+
+                                @foreach (var status in statuses)
+                                {
+                                if (fieldValue == status)
+                                {
+                                colStatus = "newColNone";
+                                }
+                                <td width='50px' class='@colStatus'>&nbsp;</td>
+                                }
+
+                                <td>@fieldValue</td>
+                            </tr>
+                            }
+                            }
+                        </table>
+                        }
+                    </div>
+                    }
+                </div>
+            </body>
+</html>

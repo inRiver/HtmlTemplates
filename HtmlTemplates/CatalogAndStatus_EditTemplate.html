@@ -1,0 +1,225 @@
+﻿<!doctype html>
+<html lang="en" class="no-js">
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.2.3/backbone.js"></script>
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Ubuntu:300,400" />
+
+</head>
+
+
+<script>
+    var categories = [ "General" ];
+    var statuses = ["Redyforpublish", "Under Enrichment", "Ready for Approval", "Approved", "Ready to Publish"];
+    var fieldPropertyNames;
+    var entity;
+
+
+    window.onload = function () {
+ 	  fieldPropertyNames = _keys(data[0].fields);
+      console.log(fieldPropertyNames);
+      for (var i = 0; i < fieldPropertyNames.length; i++)
+      {
+      		var categoryId = data[0].fields[fieldPropertyNames[i]].categoryId;
+        	if (categories.find(function(c) {
+          		return c === categoryId;
+        	}) === undefined) {
+          		categories.push(categoryId);
+        	}
+      	}
+      	console.log(categories);
+
+      	entity = data[0];
+
+      	var template = $("#fullHtmlTemplate").html();
+  		$("#mainBody").html(_.template(template,{categories:categories}));
+
+      	$("#tabs").tabs();
+    }
+
+    function _keys(obj)
+ 	{
+      if (!isObject(obj)) return [];
+      if (Object.keys) return Object.keys(obj);
+      var keys = [];
+      for (var key in obj) if (_.has(obj, key)) keys.push(key);
+      return keys;
+  	}
+
+    function isObject(obj)
+	{
+    	var type = typeof obj;
+    	return type === 'function' || type === 'object' && !!obj;
+  	}
+</script>
+
+
+
+
+<style type="text/css">
+
+    .tab {
+        font-family: 'Lato', Arial, sans-serif;
+        font-size: 13px;
+    }
+
+    table {
+        border-collapse: collapse;
+    }
+
+        table .stat {
+            border: 0px;
+        }
+
+
+
+
+    td {
+        padding-right: 15px;
+        padding-top: 3px;
+        padding-bottom: 3px;
+        border: 1px solid #ddd;
+        border-collapse: collapse;
+    }
+
+    .tdleft {
+        font-weight: bold;
+        border: 1px solid #ddd;
+        border-collapse: collapse;
+        -webkit-column-width: 500px; /* Chrome, Safari, Opera */
+        -moz-column-width: 500px; /* Firefox */
+        column-width: 500px;
+    }
+
+    .tdlabel {
+        font-weight: bold;
+        -webkit-column-width: 400px; /* Chrome, Safari, Opera */
+        -moz-column-width: 400px; /* Firefox */
+        column-width: 400px;
+    }
+
+    .newColGreen {
+        background-color: green;
+    }
+
+
+
+    .newColNone {
+        border: 0px solid #ddd;
+        border-collapse: collapse;
+    }
+
+    tr {
+        padding-top: 15px;
+        padding-bottom: 15px;
+    }
+
+    #attributes tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+
+    #stat tr:nth-child(even) {
+        background-color: #f2fff2;
+    }
+
+    #attributes td {
+        border: 1px solid #ddd;
+        border-collapse: collapse;
+    }
+</style>
+
+
+<script type="foo/bar" id="fullHtmlTemplate">
+    <div id="tabs">
+        <ul>
+            <%
+            _.each(categories, function(category, key, list) {
+            %>
+            <li><a href=#<%= category%>><%= category%></a></li>
+            <%
+            });
+            %>
+        </ul>
+        <%
+        _.each(categories, function(category, key, list) {
+        %>
+        <div id='<%= category%>'>
+            <div>
+                <img style='max-width: 250px; float:right;border-style:solid;border-width:10px;border-color:white;' src='<%= entity.displayPicture%>' />
+            </div>
+            <table id='attributes'>
+                <%
+                var myFields = [];
+                fieldPropertyNames.forEach(function(fieldName, index) {
+                var field = entity.fields[fieldName];
+                if (field.categoryId === category) {
+                field.fieldName = fieldName;
+                myFields.push(field);
+                }
+                });
+                myFields.forEach(function(field, index) {
+                %>
+                <tr>
+                    <td class='tdleft'>
+                        <%= field.label %>
+                    </td>
+                    <td>
+                        <%= field.value %>
+                    </td>
+                    <td>
+                        <span inriver-field-editor="<%= field.fieldName %>"></span>
+                    </td>
+                </tr>
+                <% }); %>
+            </table>
+            <%
+            if (category === "General") {
+            %>
+            <br /><hr /><br />
+            <table id='stat' border='0'>
+                <%
+                var fields = [];
+                fieldPropertyNames.forEach(function(fieldName, index) {
+                fields.push(entity.fields[fieldName]);
+                });
+                fields.forEach(function(field, index) {
+                var colStatus = "newColGreen";
+                if (field.label.includes("Status")) {
+                %>
+                <tr>
+                    <td class=tdlabel><%= field.label%></td>
+                    <%
+                    if (field.value.length == 0)
+                    {
+                    colStatus = "newColNone";
+                    %>
+                    <td width='50px' class='newColNone'>&nbsp;</td>
+                    <% }
+
+                    statuses.forEach(function(status, index) {
+                    if (field.value === status)
+                    {
+                    colStatus = "newColNone";
+                    }%>
+                    <td width='50px' class='<%= colStatus%>'>&nbsp;</td>
+                    <% }); %>
+
+                    <td><%= field.value%></td>
+                </tr>
+                <%
+                }
+                });
+                %>
+            </table>
+            <% } %>
+        </div>
+        <% }); %>
+    </div>
+</script>
+
+<body id="mainBody">
+</body>
+</html>
