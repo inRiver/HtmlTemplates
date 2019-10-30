@@ -321,6 +321,7 @@
         var baseurl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
+        var chunkSize = 500;
 
         var foundEntities;
         var workareasarray;
@@ -553,7 +554,7 @@
                     hideSelectFields();
 
                     specifications = new Object();
-                    var chunkedFoundEntityIds = chunk(foundEntities.entityIds, 200);
+                    var chunkedFoundEntityIds = chunk(foundEntities.entityIds, chunkSize);
                     console.log('chunkedFoundEntityIds');
                     console.log(chunkedFoundEntityIds);
                     let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
@@ -827,10 +828,10 @@
             }) === undefined) {
                 $(selector).remove();
             } else if ($(selector).html() !== undefined) {
-                $(selector).html(generateFieldTypeRow(specificationFieldId));
+                $(selector).html(renderFieldTypeRow(specificationFieldId));
             } else {
                 newValueFieldEditHtml += '<tr id="tr_' + specificationFieldId + '">';
-                newValueFieldEditHtml += generateFieldTypeRow(specificationFieldId);
+                newValueFieldEditHtml += renderFieldTypeRow(specificationFieldId);
                 newValueFieldEditHtml += "</tr>";
 
                 $('#newValueFieldEdit').append(newValueFieldEditHtml);
@@ -845,10 +846,11 @@
                 }
             }
 
+            validate();
             $('#focusPoint').focus();
         }
 
-        function generateFieldTypeRow(specificationFieldId) {
+        function renderFieldTypeRow(specificationFieldId) {
             var specificationField = specificationFieldsArray.find(function (specField) {
                 return specField.id === specificationFieldId;
             });
@@ -946,17 +948,16 @@
             }
 
             if (dataType === "DateTime") {
-                return '<input type="text"  id="' + specificationFieldTypeId + '"/>';
+                return '<input type="text"  id="' + specificationFieldTypeId + '" onkeyup="validate()"/>';
             }
             else if (pattern.length > 0) {
                 return '<input type="text" id="' + specificationFieldTypeId + '" pattern="' + pattern + '" onkeyup="validate()"/>';
             }
-            return '<input type="text" id="' + specificationFieldTypeId + '"/>';
+            return '<input type="text" id="' + specificationFieldTypeId + '" onkeyup="validate()"/>';
         }
 
         function validate() {
             var isValid = true;
-            console.log('validate');
             $('input[type=text]').each(function (index, input) {
                 var regExp = $(this).attr('pattern');
                 var value = $(this).val();
@@ -966,6 +967,8 @@
                     }
                 }
             });
+
+            console.log('validate, isValid = ' + isValid);
 
             if (!isValid) {
                 console.log('addClass("buttonInvalidForInput")');
