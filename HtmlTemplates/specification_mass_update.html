@@ -306,7 +306,7 @@
         }(jQuery));
 
         //SETUP THROTTLE SO WE MAX DO 9 CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
-        var t = $.ajaxthrottle({
+        var throttle = $.ajaxthrottle({
             numRequestsPerTimePeriod: 0,
             timePeriod: 0,
             maxConcurrent: 9
@@ -497,7 +497,7 @@
             console.log("Found cvl for cvlId = " + cvlId);
             console.log(cvl);
             if (cvl.values.length === 0) {
-                t.ajax({
+                $.ajax({
                     type: "GET",
                     dataType: "json",
                     contentType: 'application/json',
@@ -1103,7 +1103,7 @@
 
             var failedEntityIds = [];
             entitiesWithSelectedSpecification.forEach(function (entity, index) {
-                t.ajax({
+                throttle.ajax({
                     type: "PUT",
                     dataType: "json",
                     contentType: 'application/json',
