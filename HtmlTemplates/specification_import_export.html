@@ -59,35 +59,6 @@
             letter-spacing: .02em;
         }
 
-        #newValueFieldEdit ul {
-            list-style-type: none;
-            column-count: 3;
-        }
-
-        #newValueFieldEdit ul li {
-            position: relative;
-        }
-
-        #newValueFieldEdit ul li > ul {
-            top: -12px;
-            left: 190px;
-            position: absolute;
-            visibility: hidden;
-            z-index: 1;
-            background: #ffffff;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-            list-style: none;
-            width: 190px;
-            padding: 10px 0;
-            font-size: 14px;
-            line-height: 16px;
-            letter-spacing: .02em;
-        }
-
-        #valueFieldEditDiv {
-            overflow: hidden;
-        }
-
         input[type=text] {
             width: 100%;
         }
@@ -333,6 +304,7 @@
         var allLanguages;
         var showDataType = false;
         var specifications = new Object();
+        var csvDivider = ';';
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -772,6 +744,9 @@
                     });
                     fieldspecificationSelectHtml += "</ul>";
                     document.getElementById("fieldtypeselection").innerHTML = fieldspecificationSelectHtml;
+
+                    var doMassUpdateButtonDivStyle = document.getElementById('doExportButtonDiv').style;
+                    doMassUpdateButtonDivStyle.display = 'block';
                 }
             });
         }
@@ -803,8 +778,6 @@
             });
         }
 
-
-
         function hideSpecificationTemplate() {
             hideElement('specificationtemplaterow');
             hideSelectFields();
@@ -812,11 +785,6 @@
 
         function hideSelectFields() {
             hideElement('fieldtyperow');
-            hideValueFieldEditTable();
-        }
-
-        function hideValueFieldEditTable() {
-            hideElement('valueFieldEditTableId');
             hideElement('doExportButtonDiv');
         }
 
@@ -826,9 +794,20 @@
         }
 
         function doExport() {
-            var specificationValuesForUpdate = [];
+            var specificationFields = [];
+            $("#fieldtypeselector input:checked").each(function() {
+                var specFieldId = $(this).attr('value');
+                var specificationField = specificationFieldsArray.find(function (specField) {
+                    return specField.id == specFieldId;
+                });
+                specificationFields.push(specificationField);
+            });
 
-            console.log("selectedSpecificationId: " + selectedSpecificationId);
+            console.log("specificationFields:");
+            console.log(specificationFields);
+
+            console.log("selectedSpecificationId:");
+            console.log(selectedSpecificationId);
 
             var entitiesWithSelectedSpecification = [];
             foundEntities.forEach(function (entity) {
@@ -838,129 +817,42 @@
                     }
                 }
             });
-            console.log("EntitiesWithSelectedSpecification:");
+            console.log("entitiesWithSelectedSpecification:");
             console.log(entitiesWithSelectedSpecification);
 
-            $("#newValueFieldEdit input:checked").each(function () {
-                var specFieldId = $(this).attr('name');
-                var specificationField = specificationFieldsArray.find(function (specField) {
-                    return specField.id == specFieldId;
+            var specificationName = specifications[selectedSpecificationId].specificationName;
+            var header = "EntityId" + csvDivider + "SpecificationName";
+            specificationFields.forEach(function(spec, index) {
+                header += csvDivider + spec.name[language];
+            });
+            header += '\n';
+
+            var body = "";
+            entitiesWithSelectedSpecification.forEach(function(entity, index) {
+                body += entity.entityId + csvDivider + specificationName;
+                specificationFields.forEach(function(spec, index) {
+                    var field = findSpecficationById(entity.specification, spec.id);
+                    body += csvDivider + field.displayValue;
                 });
-
-                console.log("specFieldId = " + specFieldId);
-                console.log("specificationField = " + specificationField);
-                console.log(allCvls);
-
-                var specificationValue = new Object();
-                specificationValue.specificationFieldTypeId = specFieldId;
-
-                var newSpecificationValue = true;
-                if (specificationField.dataType === "Boolean") {
-                    specificationValue.value = $(this).val() == "true";
-                }
-                else if (specificationField.dataType === "CVL") {
-                    if (specificationField.isMultiValue) {
-                        var potentialSpecificationValue = specificationValuesForUpdate.find(function (value) {
-                            return value.specificationFieldTypeId == specFieldId;
-                        });
-                        if (potentialSpecificationValue != undefined) {
-                            specificationValue = potentialSpecificationValue;
-                            newSpecificationValue = false;
-                        } else {
-                            specificationValue.value = [];
-                        }
-                        specificationValue.value.push($(this).val());
-                    } else {
-                        specificationValue.value = $(this).val();
-                    }
-                }
-                if (newSpecificationValue) {
-                    specificationValuesForUpdate.push(specificationValue);
-                }
+                body += '\n';
             });
 
-            $("#newValueFieldEdit input[type=text]").each(function () {
-                var specFieldId = $(this).attr('id');
-                var fieldValue = $(this).val();
-                if (fieldValue.length > 0) {
-                    var specificationField = specificationFieldsArray.find(function (specField) {
-                        return specField.id == specFieldId;
-                    });
 
-                    var specificationValue = new Object();
-                    specificationValue.specificationFieldTypeId = specFieldId;
-                    if (specificationField.dataType === "Integer" || specificationField.dataType === "Double") {
-                        specificationValue.value = Number(fieldValue);
-                    } else {
-                        specificationValue.value = fieldValue;
-                    }
-                    specificationValuesForUpdate.push(specificationValue);
-                }
-            });
+            download(specificationName + ".csv", header + body);
+        }
 
-            $("#newValueFieldEdit textarea").each(function () {
-                var htmlId = $(this).attr('id').split(':');
-                var specFieldId = htmlId[0];
-                var languageCode = htmlId[1];
+        function download(filename, text) {
+            var element = document.createElement('a');
+//            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+            element.setAttribute('href', 'data:text/csv;charset=utf-8,' + text);
+            element.setAttribute('download', filename);
 
-                var fieldValue = $(this).val();
-                var currentSpecificationValueForUpdate = specificationValuesForUpdate.find(function (specForUpdate) {
-                    return specForUpdate.specificationFieldTypeId === specFieldId;
-                });
+            element.style.display = 'none';
+            document.body.appendChild(element);
 
-                if (currentSpecificationValueForUpdate === undefined) {
-                    var specificationValue = new Object();
-                    specificationValue.specificationFieldTypeId = specFieldId;
-                    specificationValue.value = new Object();
-                    specificationValue.value[languageCode] = fieldValue;
-                    specificationValuesForUpdate.push(specificationValue);
-                } else {
-                    currentSpecificationValueForUpdate.value[languageCode] = fieldValue;
-                }
-            });
+            element.click();
 
-            console.log("SpecificationValuesForUpdate:");
-            console.log(specificationValuesForUpdate);
-
-            var entityUpdateCount = 0;
-            var totalEntities = entitiesWithSelectedSpecification.length;
-
-            document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
-
-            var failedEntityIds = [];
-            entitiesWithSelectedSpecification.forEach(function (entity, index) {
-                throttle.ajax({
-                    type: "PUT",
-                    dataType: "json",
-                    contentType: 'application/json',
-                    data: JSON.stringify(specificationValuesForUpdate),
-                    beforeSend: function (request) {
-                        request.setRequestHeader("X-inRiver-APIKey", apikey);
-                        request.setRequestHeader("Accept", "application/json");
-                        request.setRequestHeader("Accept-Language", language);
-
-                    }, // PUT /api/v1.0.0/entities/{entityId}/specificationvalues
-                    url: baseurl + "entities/" + entity.entityId + "/specificationvalues",
-                    processData: false,
-                    success: function (specificationFields) {
-                    }, error: function (xhr) {
-                        failedEntityIds.push(entity.entityId);
-
-                        var failedHtml = "Failed entity id(s): ";
-                        var divider = "";
-                        failedEntityIds.forEach(function(id, index) {
-                            failedHtml += divider + id;
-                            divider = ',';
-                        });
-
-                        document.getElementById("failed").innerHTML = failedHtml;
-                    },
-                    complete: function () {
-                        entityUpdateCount++;
-                        document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
-                    }
-                });
-            });
+            document.body.removeChild(element);
         }
 
     </script>
@@ -993,24 +885,14 @@
                 </tbody>
             </table>
         </div>
-        <div id="valueFieldEditDiv" class="row">
-            <div class="col-lg-12">
-                <table id="valueFieldEditTableId" class="table table-bordered">
-                    <thead>
-                        <tr>
-                            <th class="col-xs-2">Field</th>
-                            <th class="col-xs-10">New value</th>
-                        </tr>
-                    </thead>
-                    <tbody id="newValueFieldEdit"></tbody>
-                </table>
-            </div>
-        </div>
         <div id="doExportButtonDiv" class="row">
+            <div class="col-lg-2">
+                <button onclick="doImport()" class="btn btn-primary" id="doExport">Import</button>
+            </div>
             <div class="col-lg-2">
                 <button onclick="doExport()" class="btn btn-primary" id="doExport">Export</button>
             </div>
-            <div class="col-lg-10">
+            <div class="col-lg-8">
                 <div class="row">
                     <div class="col-lg-4">
                         <p id="totalItems"></p>
