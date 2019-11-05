@@ -342,6 +342,7 @@
         var allLanguages;
         var showDataType = false;
         var specifications = new Object();
+        var specificationMainNameField = 'SpecificationName';
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -490,7 +491,12 @@
                         specificationLinkTypeIds += delimiter + linkType;
                         delimiter = ",";
                     });
+
+                    console.log('fetchAllOutboundSpecificationLinkTypeIds');
+                    console.log(entityTypes);
                     console.log(specificationLinkTypeIds);
+
+                    specificationMainNameField = specification.displayNameFieldTypeId;
                 },
                 error: function (xhr) {
                     console.log("Error occured.please try again");
@@ -612,7 +618,7 @@
                             var specification = entities[i].outbound[j];
                             if (!(specification.entityId in specifications)) {
                                 var specificationEntry = new Object();
-                                specificationEntry.specificationName = specification.fieldValues.find(field => field.fieldTypeId === 'SpecificationName').value;
+                                specificationEntry.specificationName = specification.fieldValues.find(field => field.fieldTypeId === specificationMainNameField).value;
                                 specificationEntry.entityCount = 1;
                                 specifications[specification.entityId] = specificationEntry;
                             } else {
