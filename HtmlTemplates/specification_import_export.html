@@ -305,6 +305,7 @@
         var showDataType = false;
         var specifications = new Object();
         var csvDivider = ';';
+        var specificationMainNameField = 'SpecificationName';
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -454,6 +455,8 @@
                         delimiter = ",";
                     });
                     console.log(specificationLinkTypeIds);
+
+                    specificationMainNameField = specification.displayNameFieldTypeId;
                 },
                 error: function (xhr) {
                     console.log("Error occured.please try again");
@@ -832,18 +835,26 @@
                 body += entity.entityId + csvDivider + specificationName;
                 specificationFields.forEach(function(spec, index) {
                     var field = findSpecficationById(entity.specification, spec.id);
-                    body += csvDivider + field.displayValue;
+                    var fieldValue = field.displayValue;
+                    if (field.specificationDataType === "LocaleString") {
+                        fieldValue = JSON.stringify(field.value);
+                    }
+                    body += csvDivider + fieldValue;
                 });
                 body += '\n';
             });
 
-
             download(specificationName + ".csv", header + body);
+        }
+
+        function doImport() {
+            var fileToImport = document.getElementById("doImport");
+            console.log(fileToImport);
+            handleFiles(fileToImport.files);
         }
 
         function download(filename, text) {
             var element = document.createElement('a');
-//            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
             element.setAttribute('href', 'data:text/csv;charset=utf-8,' + text);
             element.setAttribute('download', filename);
 
@@ -855,12 +866,198 @@
             document.body.removeChild(element);
         }
 
+        function handleFiles(files) {
+            console.log(files);
+            // Check for the various File API support.
+            if (window.FileReader) {
+                // FileReader are supported.
+                getAsText(files[0]);
+            } else {
+                alert('FileReader are not supported in this browser.');
+            }
+        }
+
+        function getAsText(fileToRead) {
+            var reader = new FileReader();
+            // Read file into memory as UTF-8      
+            reader.readAsText(fileToRead);
+            // Handle errors load
+            reader.onload = loadHandler;
+            reader.onerror = errorHandler;
+        }
+
+        function loadHandler(event) {
+            var csv = event.target.result;
+            processImport(csv);
+        }
+
+        function processImport(csv) {
+            var allTextLines = csv.split(/\r\n|\n/);
+            var lines = [];
+            for (var i=0; i<allTextLines.length; i++) {
+                var data = allTextLines[i].split(';');
+                var tarr = [];
+                for (var j=0; j<data.length; j++) {
+                    tarr.push(data[j]);
+                }
+                lines.push(tarr);
+            }
+            console.log(lines);
+
+            console.log("selectedSpecificationId: " + selectedSpecificationId);
+
+            var entitiesWithSelectedSpecification = [];
+            foundEntities.forEach(function (entity) {
+                if (entity.outbound.length > 0) {
+                    if (entity.outbound[0].entityId == selectedSpecificationId) {
+                        entitiesWithSelectedSpecification.push(entity);
+                    }
+                }
+            });
+            console.log("EntitiesWithSelectedSpecification:");
+            console.log(entitiesWithSelectedSpecification);
+
+            var headerVerification = verifyHeader(lines[0]);
+            var entitiesAndSpecificationsToUpdate = [];
+            if (headerVerification.message.length == 0) {
+                var skipHeader = true;
+                lines.forEach(function(line, index) {
+                    if (!skipHeader) {
+                        var entityId = parseInt(line[0]);
+                        var entity = entitiesWithSelectedSpecification.find(function(entity) {
+                            return entity.entityId == entityId;
+                        });
+
+                        console.log("Row entity:");
+                        console.log(entity);
+
+                        var specificationName = specifications[selectedSpecificationId].specificationName;
+                        if (entity !== undefined) {
+                            if (specificationName !== line[1]) {
+                                console.log("Specification name of the SpecificationName does not match selected specification.");
+                            } else {
+                                entitiesAndSpecificationsToUpdate.push(generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line));
+                            }
+                        }
+                    } else {
+                        skipHeader = false;
+                    }
+                });
+
+                console.log('entitiesAndSpecificationsToUpdate');
+                console.log(entitiesAndSpecificationsToUpdate);
+
+                var failedEntityIds = [];
+
+                var entityUpdateCount = 0;
+                var totalEntities = entitiesAndSpecificationsToUpdate.length;
+
+                document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
+
+                entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
+                    throttle.ajax({
+                        type: "PUT",
+                        dataType: "json",
+                        contentType: 'application/json',
+                        data: JSON.stringify(entityAndSpecifications.specificationValuesForUpdate),
+                        beforeSend: function (request) {
+                            request.setRequestHeader("X-inRiver-APIKey", apikey);
+                            request.setRequestHeader("Accept", "application/json");
+                            request.setRequestHeader("Accept-Language", language);
+
+                        }, // PUT /api/v1.0.0/entities/{entityId}/specificationvalues
+                        url: baseurl + "entities/" + entityAndSpecifications.entityId + "/specificationvalues",
+                        processData: false,
+                        success: function (specificationFields) {
+                        }, error: function (xhr) {
+                            failedEntityIds.push(entityAndSpecifications.entityId);
+
+                            var failedHtml = "Failed entity id(s): ";
+                            var divider = "";
+                            failedEntityIds.forEach(function(id, index) {
+                                failedHtml += divider + id;
+                                divider = ',';
+                            });
+
+                            document.getElementById("failed").innerHTML = failedHtml;
+                        },
+                        complete: function () {
+                            entityUpdateCount++;
+                            document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
+                        }
+                    });
+                });
+            } else {
+                alert('Imported file does not have a header that match the specification. Field wrong: ' + result);
+            }
+        }
+
+        function errorHandler(evt) {
+            if(evt.target.error.name == "NotReadableError") {
+                alert("Can not read file !");
+            }
+        }
+
+        function generateSpecificationValue(entityId, specifications, line) {
+            var result = { entityId: entityId, specificationValuesForUpdate: []};
+            var valuePartLine = line.slice(2);
+            for (var i = 0; i < valuePartLine.length; i++) {
+                var specificationValue = new Object();
+                specificationValue.specificationFieldTypeId = specifications[i].id;
+                if (specifications[i].dataType === "CVL" && specifications[i].isMultiValue) {
+                    specificationValue.value = valuePartLine[i].split(',');
+                } else if (specifications[i].dataType === "LocaleString") {
+                    console.log('localeStringJson before');
+                    console.log(valuePartLine[i]);
+                    var localeStringJson = valuePartLine[i].replace(/""/g, '"');
+                    localeStringJson = localeStringJson.substring(1, localeStringJson.length - 1);
+                    console.log('localeStringJson after');
+                    console.log(localeStringJson);
+                    specificationValue.value = JSON.parse(localeStringJson);
+                } else {
+                    specificationValue.value = valuePartLine[i];
+                }
+
+                result.specificationValuesForUpdate.push(specificationValue);
+            }
+
+            return result;
+        }
+
+        function verifyHeader(header) {
+            var result = { message: "", specificationFieldsMatchingHeader: [] };
+            if (header[0] !== "EntityId") {
+                result.message = "First field should be EntityId";
+                return result;
+            }
+            if (header[1] !== "SpecificationName") {
+                result.messagh = "Second field should be SpecificationName";
+                return result;
+            }
+
+            for (var i = 2; i < header.length; i++) {
+                var specificationField = specificationFieldsArray.find(function (spec) {
+                    return spec.name[language] === header[i];
+                });
+                if (specificationField === undefined) {
+                    result.message = "Field " + header[i] + " is not part of the specification";
+                } else {
+                    result.specificationFieldsMatchingHeader.push(specificationField);
+                }
+
+            }
+
+            console.log('Header verification:');
+            console.log(result);
+
+            return result;
+        }
     </script>
 
 </head>
 <body>
     <div class="container">
-        <h1>Specification Mass Update</h1>
+        <h1>Specification Import Export</h1>
         <div class="row">
             <table class="table table-bordered">
                 <thead class="thead-dark">
@@ -886,13 +1083,16 @@
             </table>
         </div>
         <div id="doExportButtonDiv" class="row">
-            <div class="col-lg-2">
-                <button onclick="doImport()" class="btn btn-primary" id="doExport">Import</button>
+            <div class="col-lg-3">
+                <div class="row">
+                    <input type="file" id="doImport" accept=".csv"/>
+                    <button onclick="doImport()" class="btn btn-primary" id="doExport">Import</button>
+                </div>
             </div>
             <div class="col-lg-2">
                 <button onclick="doExport()" class="btn btn-primary" id="doExport">Export</button>
             </div>
-            <div class="col-lg-8">
+            <div class="col-lg-7">
                 <div class="row">
                     <div class="col-lg-4">
                         <p id="totalItems"></p>
