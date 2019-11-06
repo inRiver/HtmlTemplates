@@ -21,6 +21,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js" ></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore.js"></script>
+
     <style type="text/css">
         table {
             font-family: arial, sans-serif;
@@ -306,6 +308,19 @@
         var specifications = new Object();
         var csvDivider = ';';
         var specificationMainNameField = 'SpecificationName';
+
+        var predefinedColumns = [
+            {
+                columnName: "EntityId", exportOperation: function (entity) {
+                    return entity.entityId;
+                }
+            },
+            {
+                columnName: "SpecificationName", exportOperation: function (entity) {
+                    return specifications[selectedSpecificationId].specificationName;
+                }
+            }
+        ];
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -823,8 +838,7 @@
             console.log("entitiesWithSelectedSpecification:");
             console.log(entitiesWithSelectedSpecification);
 
-            var specificationName = specifications[selectedSpecificationId].specificationName;
-            var header = "EntityId" + csvDivider + "SpecificationName";
+            var header = _.map(predefinedColumns, function(column) { return column.columnName; }).join(csvDivider);
             specificationFields.forEach(function(spec, index) {
                 header += csvDivider + spec.name[language];
             });
@@ -832,7 +846,7 @@
 
             var body = "";
             entitiesWithSelectedSpecification.forEach(function(entity, index) {
-                body += entity.entityId + csvDivider + specificationName;
+                body += _.map(predefinedColumns, function(column) { return column.exportOperation(entity); }).join(csvDivider);
                 specificationFields.forEach(function(spec, index) {
                     var field = findSpecficationById(entity.specification, spec.id);
                     var fieldValue = field.displayValue;
@@ -844,6 +858,7 @@
                 body += '\n';
             });
 
+            var specificationName = specifications[selectedSpecificationId].specificationName;
             download(specificationName + ".csv", header + body);
         }
 
@@ -1007,12 +1022,8 @@
                 if (specifications[i].dataType === "CVL" && specifications[i].isMultiValue) {
                     specificationValue.value = valuePartLine[i].split(',');
                 } else if (specifications[i].dataType === "LocaleString") {
-                    console.log('localeStringJson before');
-                    console.log(valuePartLine[i]);
                     var localeStringJson = valuePartLine[i].replace(/""/g, '"');
                     localeStringJson = localeStringJson.substring(1, localeStringJson.length - 1);
-                    console.log('localeStringJson after');
-                    console.log(localeStringJson);
                     specificationValue.value = JSON.parse(localeStringJson);
                 } else {
                     specificationValue.value = valuePartLine[i];
@@ -1026,21 +1037,20 @@
 
         function verifyHeader(header) {
             var result = { message: "", specificationFieldsMatchingHeader: [] };
-            if (header[0] !== "EntityId") {
-                result.message = "First field should be EntityId";
-                return result;
-            }
-            if (header[1] !== "SpecificationName") {
-                result.messagh = "Second field should be SpecificationName";
-                return result;
+
+            for (var i = 0; i < predefinedColumns.length; i++) {
+                if (header[i] !== predefinedColumns[i].columnName) {
+                    result.message = "Column header number " + i + " must have the name " + predefinedColumns[i].columnName;
+                    return result;
+                }
             }
 
-            for (var i = 2; i < header.length; i++) {
+            for (var j = predefinedColumns.length; j < header.length; j++) {
                 var specificationField = specificationFieldsArray.find(function (spec) {
-                    return spec.name[language] === header[i];
+                    return spec.name[language] === header[j];
                 });
                 if (specificationField === undefined) {
-                    result.message = "Field " + header[i] + " is not part of the specification";
+                    result.message = "Field " + header[j] + " is not part of the specification";
                 } else {
                     result.specificationFieldsMatchingHeader.push(specificationField);
                 }
