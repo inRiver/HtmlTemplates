@@ -356,6 +356,8 @@
 
                     var workareasselectorhtml = '<div id="workareaselector">';
                     workareasselectorhtml += '<ul>';
+                    workareasselectorhtml += '<li id="topLevel" value="none">Common Shared';
+                    workareasselectorhtml += '<ul>';
                     for (var i = 0; i < workareasarray.length; i++) {
                         if (workareasarray[i].folders !== undefined) {
                             workareasselectorhtml += renderWorkareaSubLevels(workareasarray[i]);
@@ -364,6 +366,8 @@
                             workareasselectorhtml += '<li value="' + workareasarray[i].id + '" >' + workareasarray[i].name + '</li>';
                         }
                     }
+                    workareasselectorhtml += "</li>";
+                    workareasselectorhtml += "</ul>";
                     workareasselectorhtml += "</ul>";
                     workareasselectorhtml += "</div>";
 
@@ -372,6 +376,7 @@
                     $('#workareaselector').jstree({
                         'plugins': ["wholerow", "types"]
                     });
+                    $('#workareaselector').jstree("open_node", $('#topLevel')); 
 
                     $('#workareaselector').on("changed.jstree", function (e, data) {
                         console.log(data.node.li_attr.value);
@@ -739,7 +744,8 @@
                     console.log('categoryIds');
                     console.log(categoryIds);
 
-                    var fieldspecificationSelectHtml = '<ul id="fieldtypeselector">';
+                    var fieldspecificationSelectHtml = '<ul><li><input type="checkbox" onclick="checkAllFieldSpecifications()" id="allFieldSpecificationChecker" />&nbsp;Check All</li></ul>';
+                    fieldspecificationSelectHtml += '<ul id="fieldtypeselector">';
                     categoryIds.forEach(function (categoryId, index) {
                         fieldspecificationSelectHtml += '<li><b>' + categoryId + '</b></li>';
                         for (var i = 0; i < specificationFieldsArray.length; i++) {
@@ -767,6 +773,16 @@
                     doMassUpdateButtonDivStyle.display = 'block';
                 }
             });
+        }
+
+        function checkAllFieldSpecifications() {
+            var checkAllCheckbox = document.getElementById('allFieldSpecificationChecker');
+            console.log('allFieldSpecificationChecker checked = ' + checkAllCheckbox.checked);
+            if (checkAllCheckbox.checked == true) {
+                $('#fieldtypeselection input[type="checkbox"').prop('checked', true);
+            } else {
+                $('#fieldtypeselection input[type="checkbox"').prop('checked', false);
+            }
         }
 
         function fillInBuggedOutSpecificationFields(specificationFields) {
