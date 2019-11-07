@@ -321,11 +321,22 @@
                 }
             }
         ];
-
         var validations = {
-            "Integer": /^([+-]?[0-9]*)$/,
-            "Double": /^[-+]?[0-9]*\\.?[0-9]+$/,
-            "DateTime": /\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d(?:\\.\\d+)?Z?/
+            "Integer": function (value) {
+                var exp = /^([+-]?[0-9]*)$/.test(value);
+                console.log("Integer: " + value + ", exp: " + exp);
+                return exp;
+            },
+            "Double": function(value) {
+                var exp = /^([1-9]\d*(\.|\,)\d*|0?(\.|\,)\d*[1-9]\d*|[1-9]\d*)$/gm.test(value);
+                console.log("Double: " + value + ", exp: " + exp);
+                return exp;
+            },
+            "DateTime": function(value) {
+                var exp = /^(\d{4})(-(\d{2}))??(-(\d{2}))??(T(\d{2}):(\d{2})(:(\d{2}))??(\.(\d+))??(([\+\-]{1}\d{2}:\d{2})|Z)??)??$/.test(value);
+                console.log("DateTime: " + value + ", exp: " + exp);
+                return exp;
+            }
         };
 
         window.onload = function () {
@@ -875,6 +886,8 @@
                     var fieldValue = field.displayValue;
                     if (field.specificationDataType === "LocaleString") {
                         fieldValue = JSON.stringify(field.value);
+                    } else if (field.specificationDataType === "DateTime") {
+                        fieldValue = new Date(field.value).toISOString();
                     }
                     body += csvDivider + fieldValue;
                 });
@@ -1071,10 +1084,9 @@
                     }
                 } else {
                     specificationValue.value = valuePartLine[i];
-                    var regExp = validations[specifications[i].dataType];
-                    console.log("RegExpString:  " + regExp);
-                    if (regExp.length > 0) {
-                        if (!regExp.test(specificationValue.value).value) {
+                    var validationFunction = validations[specifications[i].dataType];
+                    if (validationFunction !== undefined) {
+                        if (!validationFunction(specificationValue.value)) {
                             console.log("validation failed: " + specificationValue.value);
                             result.validationFailures.push("Column " + specifications[i].name[language] + " of type " + specifications[i].dataType + " with value " + specificationValue.value + " is not a valid");
                         }
