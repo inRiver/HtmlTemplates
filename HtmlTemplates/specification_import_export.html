@@ -322,6 +322,12 @@
             }
         ];
 
+        var validations = {
+            "Integer": /^([+-]?[0-9]*)$/,
+            "Double": /^[-+]?[0-9]*\\.?[0-9]+$/,
+            "DateTime": /\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d(?:\\.\\d+)?Z?/
+        };
+
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
             fetchworkareas();
@@ -345,6 +351,7 @@
                 processData: false,
                 success: function (workareas) {
                     console.log("Success");
+                    console.log(workareas);
                     console.log(workareas);
                     workareasarray = workareas;
                     console.log(workareasarray.length);
@@ -950,6 +957,7 @@
 
             var headerVerification = verifyHeader(lines[0]);
             var entitiesAndSpecificationsToUpdate = [];
+            var validationFailureHtml = "";
             if (headerVerification.message.length == 0) {
                 var skipHeader = true;
                 lines.forEach(function(line, index) {
@@ -967,7 +975,17 @@
                             if (specificationName !== line[1]) {
                                 console.log("Specification name of the SpecificationName does not match selected specification.");
                             } else {
-                                entitiesAndSpecificationsToUpdate.push(generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line));
+                                var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
+                                entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
+                                if (entityAndSpecificationToUpdate.validationFailures.length > 0) {
+                                    validationFailureHtml += '<li>Entity' + entityId;
+                                    validationFailureHtml += '<ul>';
+                                    validationFailureHtml += _.map(entityAndSpecificationToUpdate.validationFailures, function(failure) {
+                                        return '<li>' + failure + '</li>';
+                                    }).join('');
+                                    validationFailureHtml += '</ul>';
+                                    validationFailureHtml += '</li>';
+                                }
                             }
                         }
                     } else {
@@ -977,47 +995,52 @@
 
                 console.log('entitiesAndSpecificationsToUpdate');
                 console.log(entitiesAndSpecificationsToUpdate);
+                console.log(validationFailureHtml);
 
-                var failedEntityIds = [];
+                if (validationFailureHtml.length > 0) {
+                    document.getElementById("validationFailures").innerHTML = validationFailureHtml;
+                } else {
+                    var failedEntityIds = [];
 
-                var entityUpdateCount = 0;
-                var totalEntities = entitiesAndSpecificationsToUpdate.length;
+                    var entityUpdateCount = 0;
+                    var totalEntities = entitiesAndSpecificationsToUpdate.length;
 
-                document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
+                    document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
 
-                entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
-                    throttle.ajax({
-                        type: "PUT",
-                        dataType: "json",
-                        contentType: 'application/json',
-                        data: JSON.stringify(entityAndSpecifications.specificationValuesForUpdate),
-                        beforeSend: function (request) {
-                            request.setRequestHeader("X-inRiver-APIKey", apikey);
-                            request.setRequestHeader("Accept", "application/json");
-                            request.setRequestHeader("Accept-Language", language);
+                    entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
+                        throttle.ajax({
+                            type: "PUT",
+                            dataType: "json",
+                            contentType: 'application/json',
+                            data: JSON.stringify(entityAndSpecifications.specificationValuesForUpdate),
+                            beforeSend: function (request) {
+                                request.setRequestHeader("X-inRiver-APIKey", apikey);
+                                request.setRequestHeader("Accept", "application/json");
+                                request.setRequestHeader("Accept-Language", language);
 
-                        }, // PUT /api/v1.0.0/entities/{entityId}/specificationvalues
-                        url: baseurl + "entities/" + entityAndSpecifications.entityId + "/specificationvalues",
-                        processData: false,
-                        success: function (specificationFields) {
-                        }, error: function (xhr) {
-                            failedEntityIds.push(entityAndSpecifications.entityId);
+                            }, // PUT /api/v1.0.0/entities/{entityId}/specificationvalues
+                            url: baseurl + "entities/" + entityAndSpecifications.entityId + "/specificationvalues",
+                            processData: false,
+                            success: function (specificationFields) {
+                            }, error: function (xhr) {
+                                failedEntityIds.push(entityAndSpecifications.entityId);
 
-                            var failedHtml = "Failed entity id(s): ";
-                            var divider = "";
-                            failedEntityIds.forEach(function(id, index) {
-                                failedHtml += divider + id;
-                                divider = ',';
-                            });
+                                var failedHtml = "Failed entity id(s): ";
+                                var divider = "";
+                                failedEntityIds.forEach(function(id, index) {
+                                    failedHtml += divider + id;
+                                    divider = ',';
+                                });
 
-                            document.getElementById("failed").innerHTML = failedHtml;
-                        },
-                        complete: function () {
-                            entityUpdateCount++;
-                            document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
-                        }
+                                document.getElementById("failed").innerHTML = failedHtml;
+                            },
+                            complete: function () {
+                                entityUpdateCount++;
+                                document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
+                            }
+                        });
                     });
-                });
+                }
             } else {
                 alert('Imported file does not have a header that match the specification. Field wrong: ' + result);
             }
@@ -1030,7 +1053,7 @@
         }
 
         function generateSpecificationValue(entityId, specifications, line) {
-            var result = { entityId: entityId, specificationValuesForUpdate: []};
+            var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: []};
             var valuePartLine = line.slice(2);
             for (var i = 0; i < valuePartLine.length; i++) {
                 var specificationValue = new Object();
@@ -1040,9 +1063,22 @@
                 } else if (specifications[i].dataType === "LocaleString") {
                     var localeStringJson = valuePartLine[i].replace(/""/g, '"');
                     localeStringJson = localeStringJson.substring(1, localeStringJson.length - 1);
-                    specificationValue.value = JSON.parse(localeStringJson);
+                    try {
+                        specificationValue.value = JSON.parse(localeStringJson);
+                    }
+                    catch(e) {
+                        result.validationFailures.push("Column " + specifications[i].name[language] + " of type LocaleString is not valid");
+                    }
                 } else {
                     specificationValue.value = valuePartLine[i];
+                    var regExp = validations[specifications[i].dataType];
+                    console.log("RegExpString:  " + regExp);
+                    if (regExp.length > 0) {
+                        if (!regExp.test(specificationValue.value).value) {
+                            console.log("validation failed: " + specificationValue.value);
+                            result.validationFailures.push("Column " + specifications[i].name[language] + " of type " + specifications[i].dataType + " with value " + specificationValue.value + " is not a valid");
+                        }
+                    }
                 }
 
                 result.specificationValuesForUpdate.push(specificationValue);
@@ -1135,11 +1171,13 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-lg-12">
-                <br />
-                <br />
-                <br />
-            </div>
+            <br />
+            <br />
+            <br />
+            <ul id="validationFailures"></ul>
+            <br />
+            <br />
+            <br />
         </div>
     </div>
 </body>
