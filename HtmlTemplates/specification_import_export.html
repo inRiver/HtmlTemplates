@@ -787,8 +787,7 @@
                     fieldspecificationSelectHtml += "</ul>";
                     document.getElementById("fieldtypeselection").innerHTML = fieldspecificationSelectHtml;
 
-                    var doMassUpdateButtonDivStyle = document.getElementById('doExportButtonDiv').style;
-                    doMassUpdateButtonDivStyle.display = 'block';
+                    showElement('doExportButtonDiv');
                 }
             });
         }
@@ -844,6 +843,11 @@
         function hideElement(elementId) {
             var style = document.getElementById(elementId).style;
             style.display = 'none';
+        }
+
+        function showElement(elementId) {
+            var element = document.getElementById(elementId).style;
+            element.display = 'block';
         }
 
         function doExport() {
@@ -1013,8 +1017,7 @@
                 console.log(validationFailureHtml);
 
                 if (validationFailureHtml.length > 0) {
-                    var doMassUpdateButtonDivStyle = document.getElementById('importFailureRow').style;
-                    doMassUpdateButtonDivStyle.display = 'block';
+                    showElement('importFailureRow');
 
                     document.getElementById("validationFailures").innerHTML = validationFailureHtml;
                 } else {
