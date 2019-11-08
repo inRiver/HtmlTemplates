@@ -101,7 +101,7 @@
             font-style: italic;
         }
     
-        #failed {
+        .failed {
             color: red;
         }
 
@@ -838,6 +838,7 @@
         function hideSelectFields() {
             hideElement('fieldtyperow');
             hideElement('doExportButtonDiv');
+            hideElement('importFailureRow');
         }
 
         function hideElement(elementId) {
@@ -899,6 +900,7 @@
         }
 
         function doImport() {
+            hideElement('importFailureRow');
             var fileToImport = document.getElementById("doImport");
             console.log(fileToImport);
             handleFiles(fileToImport.files);
@@ -991,7 +993,7 @@
                                 var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
                                 entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
                                 if (entityAndSpecificationToUpdate.validationFailures.length > 0) {
-                                    validationFailureHtml += '<li>Entity' + entityId;
+                                    validationFailureHtml += '<li>Entity ' + entityId;
                                     validationFailureHtml += '<ul>';
                                     validationFailureHtml += _.map(entityAndSpecificationToUpdate.validationFailures, function(failure) {
                                         return '<li>' + failure + '</li>';
@@ -1011,6 +1013,9 @@
                 console.log(validationFailureHtml);
 
                 if (validationFailureHtml.length > 0) {
+                    var doMassUpdateButtonDivStyle = document.getElementById('importFailureRow').style;
+                    doMassUpdateButtonDivStyle.display = 'block';
+
                     document.getElementById("validationFailures").innerHTML = validationFailureHtml;
                 } else {
                     var failedEntityIds = [];
@@ -1080,7 +1085,7 @@
                         specificationValue.value = JSON.parse(localeStringJson);
                     }
                     catch(e) {
-                        result.validationFailures.push("Column " + specifications[i].name[language] + " of type LocaleString is not valid");
+                        result.validationFailures.push("Column <b>" + specifications[i].name[language] + "</b> of type <b>LocaleString</b> is not valid");
                     }
                 } else {
                     specificationValue.value = valuePartLine[i];
@@ -1088,7 +1093,7 @@
                     if (validationFunction !== undefined) {
                         if (!validationFunction(specificationValue.value)) {
                             console.log("validation failed: " + specificationValue.value);
-                            result.validationFailures.push("Column " + specifications[i].name[language] + " of type " + specifications[i].dataType + " with value " + specificationValue.value + " is not a valid");
+                            result.validationFailures.push("Column <b>" + specifications[i].name[language] + "</b> of type <b>" + specifications[i].dataType + "</b> with value <b>" + specificationValue.value + "</b> is not a valid");
                         }
                     }
                 }
@@ -1177,15 +1182,18 @@
                 </div>
                 <div class="row">
                     <div class="col-lg-8">
-                        <p id="failed"></p>
+                        <p class="failed"></p>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="row">
+        <div class="row" id="importFailureRow">
             <br />
             <br />
+            <p class="failed">Import failed. The following items are not valid.</p>
             <ul id="validationFailures"></ul>
+        </div>
+        <div class="row">
             <br />
             <br />
             <br />
