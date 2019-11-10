@@ -769,7 +769,8 @@
                     console.log('categoryIds');
                     console.log(categoryIds);
 
-                    var fieldspecificationSelectHtml = '<ul id="fieldtypeselector">';
+                    var fieldspecificationSelectHtml = '<ul><li><input type="checkbox" onclick="checkAllFieldSpecifications()" id="allFieldSpecificationChecker" />&nbsp;Check All</li></ul>';
+                    fieldspecificationSelectHtml += '<ul id="fieldtypeselector">';
                     categoryIds.forEach(function (categoryId, index) {
                         fieldspecificationSelectHtml += '<li><b>' + categoryId + '</b></li>';
                         for (var i = 0; i < specificationFieldsArray.length; i++) {
@@ -794,6 +795,20 @@
                     document.getElementById("fieldtypeselection").innerHTML = fieldspecificationSelectHtml;
                 }
             });
+        }
+
+        function checkAllFieldSpecifications() {
+            var checkAllCheckbox = document.getElementById('allFieldSpecificationChecker');
+            console.log('allFieldSpecificationChecker checked = ' + checkAllCheckbox.checked);
+            if (checkAllCheckbox.checked == true) {
+                $('#fieldtypeselector input[type="checkbox"').prop('checked', true);
+            } else {
+                $('#fieldtypeselector input[type="checkbox"').prop('checked', false);
+            }
+
+            for (var i = 0; i < specificationFieldsArray.length; i++) {
+                fieldTypesSelected(specificationFieldsArray[i].id);
+            }
         }
 
         function fillInBuggedOutSpecificationFields(specificationFields) {
@@ -826,7 +841,7 @@
 
         function fieldTypesSelected(specificationFieldId) {
             var checkedFieldTypeIds = [];
-            $("#fieldtypeselection input:checked").each(function () {
+            $("#fieldtypeselector input:checked").each(function () {
                 checkedFieldTypeIds.push($(this).val());
             });
 
