@@ -383,6 +383,8 @@
 
                     var workareasselectorhtml = '<div id="workareaselector">';
                     workareasselectorhtml += '<ul>';
+                    workareasselectorhtml += '<li id="topLevel" value="none">Common Shared';
+                    workareasselectorhtml += '<ul>';
                     for (var i = 0; i < workareasarray.length; i++) {
                         if (workareasarray[i].folders !== undefined) {
                             workareasselectorhtml += renderWorkareaSubLevels(workareasarray[i]);
@@ -399,6 +401,7 @@
                     $('#workareaselector').jstree({
                         'plugins': ["wholerow", "types"]
                     });
+                    $('#workareaselector').jstree("open_node", $('#topLevel')); 
 
                     $('#workareaselector').on("changed.jstree", function (e, data) {
                         console.log(data.node.li_attr.value);
