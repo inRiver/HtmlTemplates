@@ -954,7 +954,7 @@
         function processImport(csv) {
             var allTextLines = csv.split(/\r\n|\n/);
             var lines = [];
-            for (var i=0; i<allTextLines.length; i++) {
+            for (var i=0; i < allTextLines.length; i++) {
                 var data = allTextLines[i].split(';');
                 var tarr = [];
                 for (var j=0; j<data.length; j++) {
@@ -994,20 +994,26 @@
 
                         var specificationName = specifications[selectedSpecificationId].specificationName;
                         if (entity !== undefined) {
+                            var validationFailureListItems = "";
                             if (specificationName !== line[1]) {
-                                console.log("Specification name of the SpecificationName does not match selected specification.");
-                            } else {
-                                var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
-                                entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
-                                if (entityAndSpecificationToUpdate.validationFailures.length > 0) {
-                                    validationFailureHtml += '<li>Entity ' + entityId;
-                                    validationFailureHtml += '<ul>';
-                                    validationFailureHtml += _.map(entityAndSpecificationToUpdate.validationFailures, function(failure) {
+                                validationFailureListItems += '<li>The SpecificationName column value <b>' + line[1] + '</b> does not match selected specification <b>' + specificationName + '</b></li>';
+                            }
+
+                            var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
+                            entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
+                            if (entityAndSpecificationToUpdate.validationFailures.length > 0) {
+                                validationFailureListItems += _.map(entityAndSpecificationToUpdate.validationFailures,
+                                    function(failure) {
                                         return '<li>' + failure + '</li>';
                                     }).join('');
-                                    validationFailureHtml += '</ul>';
-                                    validationFailureHtml += '</li>';
-                                }
+                            }
+
+                            if (validationFailureListItems.length > 0) {
+                                validationFailureHtml += '<li>Entity ' + entityId;
+                                validationFailureHtml += '<ul>';
+                                validationFailureHtml += validationFailureListItems;
+                                validationFailureHtml += '</ul>';
+                                validationFailureHtml += '</li>';
                             }
                         }
                     } else {
@@ -1066,7 +1072,7 @@
                     });
                 }
             } else {
-                alert('Imported file does not have a header that match the specification. Field wrong: ' + result);
+                alert('Imported file does not have a header that match the specification. Field wrong: ' + headerVerification.message);
             }
         }
 
@@ -1099,7 +1105,7 @@
                     if (validationFunction !== undefined) {
                         if (!validationFunction(specificationValue.value)) {
                             console.log("validation failed: " + specificationValue.value);
-                            result.validationFailures.push("Column <b>" + specifications[i].name[language] + "</b> of type <b>" + specifications[i].dataType + "</b> with value <b>" + specificationValue.value + "</b> is not a valid");
+                            result.validationFailures.push("Column <b>" + specifications[i].name[language] + "</b> of type <b>" + specifications[i].dataType + "</b> with value <b>" + specificationValue.value + "</b> is not valid");
                         }
                     }
                 }
@@ -1115,7 +1121,7 @@
 
             for (var i = 0; i < predefinedColumns.length; i++) {
                 if (header[i] !== predefinedColumns[i].columnName) {
-                    result.message = "Column header number " + i + " must have the name " + predefinedColumns[i].columnName;
+                    result.message = 'Column header number " + i + " must have the name "' + predefinedColumns[i].columnName + '"';
                     return result;
                 }
             }
@@ -1125,7 +1131,7 @@
                     return spec.name[language] === header[j];
                 });
                 if (specificationField === undefined) {
-                    result.message = "Field " + header[j] + " is not part of the specification";
+                    result.message = 'Field "' + header[j] + '" is not part of the specification';
                 } else {
                     result.specificationFieldsMatchingHeader.push(specificationField);
                 }
