@@ -1,13 +1,18 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-    <!--
-        Version: 1.0.0.1
+    <!--    
+        Version: 1.0.0.2
 
         Revision History:
+        1.0.0.2
+        =============================================
+        - Added a top node, Common Shared, to the work area tree.
+        - A "Check all" checkbox has been added to 
+
         1.0.0.1
         =============================================
-        Bug correction: If a specification was chosen and fields had been selected and then the specification template was 
+        Bug correction: If a specification was chosen and fields had been selected and then the specification template was
         changed to another the previously selected field remained. This bug is now fixed.
 
         1.0
@@ -401,7 +406,7 @@
                     $('#workareaselector').jstree({
                         'plugins': ["wholerow", "types"]
                     });
-                    $('#workareaselector').jstree("open_node", $('#topLevel')); 
+                    $('#workareaselector').jstree("open_node", $('#topLevel'));
 
                     $('#workareaselector').on("changed.jstree", function (e, data) {
                         console.log(data.node.li_attr.value);
