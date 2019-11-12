@@ -955,7 +955,7 @@
             var allTextLines = csv.split(/\r\n|\n/);
             var lines = [];
             for (var i=0; i < allTextLines.length; i++) {
-                var data = allTextLines[i].split(';');
+                var data = allTextLines[i].split(csvDivider);
                 var tarr = [];
                 for (var j=0; j<data.length; j++) {
                     tarr.push(data[j]);
@@ -1072,7 +1072,7 @@
                     });
                 }
             } else {
-                alert('Imported file does not have a header that match the specification. Field wrong: ' + headerVerification.message);
+                alert('Imported file does not have a correct header. ' + headerVerification.message);
             }
         }
 
@@ -1119,19 +1119,25 @@
         function verifyHeader(header) {
             var result = { message: "", specificationFieldsMatchingHeader: [] };
 
+            if (header.length < predefinedColumns.length) {
+                result.message = 'Header (and file) is not ' + csvDivider + '-separated';
+                return result;
+            }
+
             for (var i = 0; i < predefinedColumns.length; i++) {
                 if (header[i] !== predefinedColumns[i].columnName) {
-                    result.message = 'Column header number " + i + " must have the name "' + predefinedColumns[i].columnName + '"';
+                    result.message = 'Column header number "' + (i + 1) + '" must have the name "' + predefinedColumns[i].columnName + '"';
                     return result;
                 }
             }
 
+            var specificationName = specifications[selectedSpecificationId].specificationName;
             for (var j = predefinedColumns.length; j < header.length; j++) {
                 var specificationField = specificationFieldsArray.find(function (spec) {
                     return spec.name[language] === header[j];
                 });
                 if (specificationField === undefined) {
-                    result.message = 'Field "' + header[j] + '" is not part of the specification';
+                    result.message = 'Column "' + header[j] + '" is not part of the specification selected (= ' + specificationName + ')';
                 } else {
                     result.specificationFieldsMatchingHeader.push(specificationField);
                 }
@@ -1201,7 +1207,7 @@
                 <div class="row" id="importFailureRow">
                     <br />
                     <br />
-                    <p class="failed">Import failed. The following items are not valid.</p>
+                    <p class="failed">Import failed. The following columns are not valid.</p>
                     <ul id="validationFailures"></ul>
                 </div>
             </div>
