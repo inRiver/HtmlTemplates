@@ -881,8 +881,12 @@
             console.log(entitiesWithSelectedSpecification);
 
             var header = _.map(predefinedColumns, function(column) { return column.columnName; }).join(csvDivider);
-            specificationFields.forEach(function(spec, index) {
-                header += csvDivider + spec.name[language];
+            specificationFields.forEach(function (spec, index) {
+                if (spec.dataType === "LocaleString") {
+                    header += csvDivider + generateHeaderForLocaleString(spec.name[language]);
+                } else {
+                    header += csvDivider + spec.name[language];
+                }
             });
             header += '\n';
 
@@ -893,11 +897,13 @@
                     var field = findSpecficationById(entity.specification, spec.id);
                     var fieldValue = field.displayValue;
                     if (field.specificationDataType === "LocaleString") {
-                        fieldValue = JSON.stringify(field.value);
+                        fieldValue = splitLocaleStringToColumnValues(field.value);
                     } else if (field.specificationDataType === "DateTime") {
                         fieldValue = new Date(field.value).toISOString();
+                    } else if (field.specificationDataType === "CVL" && field.isMultiValue) {
+                        fieldValue = fieldValue.join(',');
                     }
-                    else if (field.unit.length > 0) {
+                    else if (field.unit.length > 0 || field.specificationDataType === "CVL") {
                         fieldValue = field.value;
                     }
                     body += csvDivider + fieldValue;
@@ -907,6 +913,26 @@
 
             var specificationName = specifications[selectedSpecificationId].specificationName;
             download(specificationName + ".csv", header + body);
+        }
+
+        function generateHeaderForLocaleString(specificationName) {
+            var result = "";
+            var divider = "";
+            allLanguages.forEach(function(language, index) {
+                result += divider + specificationName + "_" + language.name;
+                divider = csvDivider;
+            });
+            return result;
+        }
+
+        function splitLocaleStringToColumnValues(localeString) {
+            var result = "";
+            var divider = "";
+            allLanguages.forEach(function(language, index) {
+                result += divider + localeString[language.name];
+                divider = csvDivider;
+            });
+            return result;
         }
 
         function doImport() {
@@ -1086,35 +1112,56 @@
         }
 
         function generateSpecificationValue(entityId, specifications, line) {
+            var localeStringFields = new Object();
             var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: []};
             var valuePartLine = line.slice(2);
+            var specificationValue;
             for (var i = 0; i < valuePartLine.length; i++) {
-                var specificationValue = new Object();
-                specificationValue.specificationFieldTypeId = specifications[i].id;
-                if (specifications[i].dataType === "CVL" && specifications[i].isMultiValue) {
+                var skipValueToUpdate = false;
+                specificationValue = new Object();
+                specificationValue.specificationFieldTypeId = specifications[i].specificationField.id;
+                if (specifications[i].specificationField.dataType === "CVL" && specifications[i].specificationField.isMultiValue) {
                     specificationValue.value = valuePartLine[i].split(',');
-                } else if (specifications[i].dataType === "LocaleString") {
-                    var localeStringJson = valuePartLine[i].replace(/""/g, '"');
-                    localeStringJson = localeStringJson.substring(1, localeStringJson.length - 1);
-                    try {
-                        specificationValue.value = JSON.parse(localeStringJson);
+                } else if (specifications[i].specificationField.dataType === "LocaleString") {
+                    if (localeStringFields[specifications[i].specificationField.id] === undefined) {
+                        localeStringFields[specifications[i].specificationField.id] = new Object();
                     }
-                    catch(e) {
-                        result.validationFailures.push("Column <b>" + specifications[i].name[language] + "</b> of type <b>LocaleString</b> is not valid");
-                    }
+                    localeStringFields[specifications[i].specificationField.id][specifications[i].language] = valuePartLine[i];
+                    skipValueToUpdate = true;
                 } else {
-                    specificationValue.value = valuePartLine[i];
-                    var validationFunction = validations[specifications[i].dataType];
+                    if (specifications[i].specificationField.dataType === "Integer" ||
+                        specifications[i].specificationField.dataType === "Double") {
+                        specificationValue.value = Number(valuePartLine[i]);
+                    } else if (specifications[i].specificationField.dataType === "Boolean") {
+                        specificationValue.value = valuePartLine[i].toLowerCase() === "true";
+                    } else {
+                        specificationValue.value = valuePartLine[i];
+                    }
+
+                    var validationFunction = validations[specifications[i].specificationField.dataType];
                     if (validationFunction !== undefined) {
                         if (!validationFunction(specificationValue.value)) {
                             console.log("validation failed: " + specificationValue.value);
-                            result.validationFailures.push("Column <b>" + specifications[i].name[language] + "</b> of type <b>" + specifications[i].dataType + "</b> with value <b>" + specificationValue.value + "</b> is not valid");
+                            result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> with value <b>" + specificationValue.value + "</b> is not valid");
                         }
                     }
                 }
 
-                result.specificationValuesForUpdate.push(specificationValue);
+                if (!skipValueToUpdate) {
+                    result.specificationValuesForUpdate.push(specificationValue);
+                }
             }
+
+            console.log('generateSpecificationValue(): localeStringFields');
+            console.log(localeStringFields);
+
+            for (var key in localeStringFields) {
+                specificationValue = new Object();
+                specificationValue.specificationFieldTypeId = key;
+                specificationValue.value = localeStringFields[key];
+                result.specificationValuesForUpdate.push(specificationValue);
+                console.log(specificationValue);
+            };
 
             return result;
         }
@@ -1136,13 +1183,18 @@
 
             var specificationName = specifications[selectedSpecificationId].specificationName;
             for (var j = predefinedColumns.length; j < header.length; j++) {
+                var specNameInHeaderParts = header[j].split('_');
                 var specificationField = specificationFieldsArray.find(function (spec) {
-                    return spec.name[language] === header[j];
+                    return spec.name[language] === specNameInHeaderParts[0];
                 });
                 if (specificationField === undefined) {
                     result.message = 'Column "' + header[j] + '" is not part of the specification selected (= ' + specificationName + ')';
                 } else {
-                    result.specificationFieldsMatchingHeader.push(specificationField);
+                    var columnLanguage = "";
+                    if (specNameInHeaderParts.length > 1) {
+                        columnLanguage = specNameInHeaderParts[1];
+                    }
+                    result.specificationFieldsMatchingHeader.push({specificationField: specificationField, language: columnLanguage});
                 }
 
             }
