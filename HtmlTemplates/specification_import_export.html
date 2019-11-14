@@ -897,6 +897,9 @@
                     } else if (field.specificationDataType === "DateTime") {
                         fieldValue = new Date(field.value).toISOString();
                     }
+                    else if (field.unit.length > 0) {
+                        fieldValue = field.value;
+                    }
                     body += csvDivider + fieldValue;
                 });
                 body += '\n';
