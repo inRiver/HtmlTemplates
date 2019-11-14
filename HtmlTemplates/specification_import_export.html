@@ -1081,9 +1081,11 @@
                             url: baseurl + "entities/" + entityAndSpecifications.entityId + "/specificationvalues",
                             processData: false,
                             success: function (specificationFields) {
-                            }, error: function (xhr) {
+                            },
+                            error: function (xhr) {
                                 failedEntityIds.push(entityAndSpecifications.entityId);
 
+                                showElement('importFailureRow');
                                 var failedHtml = "Failed entity id(s): ";
                                 var divider = "";
                                 failedEntityIds.forEach(function(id, index) {
