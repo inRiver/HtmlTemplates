@@ -922,22 +922,25 @@
             console.log("entitiesWithSelectedSpecification:");
             console.log(entitiesWithSelectedSpecification);
 
-            var header = _.map(predefinedColumns, function (column) { return column.columnName; }).join(csvDivider);
+            var exportFormat = getExportFormat();
+
+            var data = [];
+            var header = _.map(predefinedColumns, function (column) { return column.columnName; });
             specificationFields.forEach(function (spec, index) {
                 if (spec.dataType === "LocaleString") {
-                    header += csvDivider + generateHeaderForLocaleString(spec.name[language]);
+                    header.push(generateHeaderForLocaleString(spec.name[language]));
                 } else {
-                    header += csvDivider + spec.name[language];
+                    header.push(spec.name[language]);
                 }
             });
-            header += '\n';
+            data.push(header);
 
-            console.log("csvDivider: " + csvDivider);
-            console.log(header);
+            if (exportFormat === "xlsx") {
+                cvlSeparator = ',';
+            }
 
-            var body = "";
             entitiesWithSelectedSpecification.forEach(function (entity, index) {
-                body += _.map(predefinedColumns, function (column) { return column.exportOperation(entity); }).join(csvDivider);
+                var line = _.map(predefinedColumns, function (column) { return column.exportOperation(entity); });
                 specificationFields.forEach(function (spec, index) {
                     var field = findSpecficationById(entity.specification, spec.id);
                     var fieldValue = field.displayValue;
@@ -951,13 +954,13 @@
                     else if (field.unit.length > 0 || field.specificationDataType === "CVL") {
                         fieldValue = field.value;
                     }
-                    body += csvDivider + fieldValue;
+                    line.push(fieldValue);
                 });
-                body += '\n';
+                data.push(line);
             });
 
             var specificationName = specifications[selectedSpecificationId].specificationName;
-            download(specificationName, header + body);
+            download(specificationName, data, exportFormat);
         }
 
         function generateHeaderForLocaleString(specificationName) {
@@ -980,7 +983,27 @@
             return result;
         }
 
-        function download(filename, csv) {
+        function download(filename, data, exportFormat) {
+            if (exportFormat === "csv") {
+                var csv = data.forEach(function(line) {
+                    return line.join(csvDivider);
+                }).join('\n');
+
+                var element = document.createElement('a');
+                element.setAttribute('href', 'data:text/csv;charset=utf-8,' + csv);
+                element.setAttribute('download', filename + '.csv');
+                element.style.display = 'none';
+                document.body.appendChild(element);
+                element.click();
+            } else {
+                var wb = XLSX.utils.book_new();
+                var ws = XLSX.utils.aoa_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, filename);
+                XLSX.writeFile(wb, filename + '.' + exportFormat);
+            }
+        }
+
+        function getExportFormat() {
             var exportFormat = "xlsx";
             var exportFormatSelection = document.getElementsByName("exportFormatSelect");
             for (var i = 0; i < exportFormatSelection.length; ++i) {
@@ -989,28 +1012,7 @@
                     break;
                 }
             }
-
-            console.log('exportFormat: ' + exportFormat);
-
-            if (exportFormat === "csv") {
-                var element = document.createElement('a');
-                element.setAttribute('href', 'data:text/csv;charset=utf-8,' + csv);
-                element.setAttribute('download', filename + '.csv');
-                element.style.display = 'none';
-                document.body.appendChild(element);
-                element.click();
-            } else {
-                var data = [];
-                var allTextLines = csv.split(/\r\n|\n/);
-                allTextLines.forEach(function(textLine) {
-                    data.push(textLine.split(csvDivider));
-                });
-
-                var wb = XLSX.utils.book_new();
-                var ws = XLSX.utils.aoa_to_sheet(data);
-                XLSX.utils.book_append_sheet(wb, ws, filename);
-                XLSX.writeFile(wb, filename + '.' + exportFormat);
-            }
+            return exportFormat;
         }
 
         function doImport(files) {
@@ -1026,21 +1028,46 @@
 
         function getAsText(fileToRead) {
             var reader = new FileReader();
-            reader.onload = loadHandler;
-            reader.onerror = errorHandler;
-            reader.readAsBinaryString(fileToRead);
+            if (fileToRead.endswith("csv")) {
+                reader.readAsText(fileToRead);
+                reader.onload = loadHandlerCsv;
+                reader.onerror = errorHandler;
+            } else {
+                reader.onload = loadHandlerXlsx;
+                reader.onerror = errorHandler;
+                reader.readAsBinaryString(fileToRead);
+            }
         }
 
-        function loadHandler(event) {
+        function loadHandlerCsv(event) {
+            var csv = event.target.result;
+            if (csv.split(/\r\n|\n/)[0].split(',').length > 1) {
+                csvDivider = ',';
+            } else {
+                csvDivider = ',';
+            }
+            toggleCvlSeparator();
+
+            processImport(csv);
+
+            setCsvDivider();
+        }
+
+        function loadHandlerXlsx(event) {
             var workbook = XLSX.read(event.target.result, { type: 'binary' });
             var csv = toCsv(workbook);
+
+            csvDivider = ';';
+            toggleCvlSeparator();
             processImport(csv);
+
+            setCsvDivider();
         }
 
         function toCsv(workbook) {
             var result = [];
             workbook.SheetNames.forEach(function(sheetName) {
-                var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName], { FS: '"' + csvDivider + '"', strip: true });
+                var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName], { FS: ";", strip: true });
                 result.push(csv);
             });
             return result[0];
@@ -1196,6 +1223,9 @@
             var localeStringFields = new Object();
             var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: [] };
             var valuePartLine = line.slice(2);
+
+            console.log(valuePartLine);
+
             var specificationValue;
             for (var i = 0; i < valuePartLine.length; i++) {
                 var skipValueToUpdate = false;
