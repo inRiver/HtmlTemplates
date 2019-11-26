@@ -312,7 +312,8 @@
         var allLanguages;
         var showDataType = false;
         var specifications = new Object();
-        var csvDivider = ',';
+        var csvDivider;
+        var cvlSeparator;
         var specificationMainNameField = 'SpecificationName';
 
         var predefinedColumns = [
@@ -358,6 +359,39 @@
             if (!xlf.addEventListener) return;
             function handleFile(e) { doImport(e.target.files); }
             xlf.addEventListener('change', handleFile, false);
+
+            setCsvDivider();
+        }
+
+        function setCsvDivider() {
+            var divider = "";
+            var csvDividerSelection = document.getElementsByName("csvDividerSelect");
+            for (var i = 0; i < csvDividerSelection.length; ++i) {
+                if (csvDividerSelection[i].checked || csvDividerSelection.length === 1) {
+                    divider = csvDividerSelection[i].value;
+                    break;
+                }
+            }
+
+            if (divider === "comma") {
+                csvDivider = ',';
+            } else {
+                csvDivider = ';';
+            }
+
+            toggleCvlSeparator();
+
+            console.log('setCsvDivider: ' + csvDivider);
+        }
+
+        function toggleCvlSeparator()
+        {
+            if (csvDivider === ',') {
+                cvlSeparator = ';';
+            } else {
+                cvlSeparator = ',';
+            }
+
         }
 
         function fetchworkareas() {
@@ -898,6 +932,9 @@
             });
             header += '\n';
 
+            console.log("csvDivider: " + csvDivider);
+            console.log(header);
+
             var body = "";
             entitiesWithSelectedSpecification.forEach(function (entity, index) {
                 body += _.map(predefinedColumns, function (column) { return column.exportOperation(entity); }).join(csvDivider);
@@ -909,7 +946,7 @@
                     } else if (field.specificationDataType === "DateTime") {
                         fieldValue = new Date(field.value).toISOString();
                     } else if (field.specificationDataType === "CVL" && field.isMultiValue) {
-                        fieldValue = fieldValue.join(',');
+                        fieldValue = fieldValue.join(cvlSeparator);
                     }
                     else if (field.unit.length > 0 || field.specificationDataType === "CVL") {
                         fieldValue = field.value;
@@ -920,7 +957,7 @@
             });
 
             var specificationName = specifications[selectedSpecificationId].specificationName;
-            download(specificationName + ".csv", header + body);
+            download(specificationName, header + body);
         }
 
         function generateHeaderForLocaleString(specificationName) {
@@ -943,17 +980,37 @@
             return result;
         }
 
-        function download(filename, text) {
-            var element = document.createElement('a');
-            element.setAttribute('href', 'data:text/csv;charset=utf-8,' + text);
-            element.setAttribute('download', filename);
+        function download(filename, csv) {
+            var exportFormat = "xlsx";
+            var exportFormatSelection = document.getElementsByName("exportFormatSelect");
+            for (var i = 0; i < exportFormatSelection.length; ++i) {
+                if (exportFormatSelection[i].checked || exportFormatSelection.length === 1) {
+                    exportFormat = exportFormatSelection[i].value;
+                    break;
+                }
+            }
 
-            element.style.display = 'none';
-            document.body.appendChild(element);
+            console.log('exportFormat: ' + exportFormat);
 
-            element.click();
+            if (exportFormat === "csv") {
+                var element = document.createElement('a');
+                element.setAttribute('href', 'data:text/csv;charset=utf-8,' + csv);
+                element.setAttribute('download', filename + '.csv');
+                element.style.display = 'none';
+                document.body.appendChild(element);
+                element.click();
+            } else {
+                var data = [];
+                var allTextLines = csv.split(/\r\n|\n/);
+                allTextLines.forEach(function(textLine) {
+                    data.push(textLine.split(csvDivider));
+                });
 
-            document.body.removeChild(element);
+                var wb = XLSX.utils.book_new();
+                var ws = XLSX.utils.aoa_to_sheet(data);
+                XLSX.utils.book_append_sheet(wb, ws, filename);
+                XLSX.writeFile(wb, filename + '.' + exportFormat);
+            }
         }
 
         function doImport(files) {
@@ -983,28 +1040,19 @@
         function toCsv(workbook) {
             var result = [];
             workbook.SheetNames.forEach(function(sheetName) {
-                var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName], { FS: '"' + csvDivider + '"' });
+                var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName], { FS: '"' + csvDivider + '"', strip: true });
                 result.push(csv);
             });
             return result[0];
         }
 
         function TidyUpField(field) {
-            var orgField = field;
-            var changed = false;
             if (field.startsWith('"')) {
                 field = field.substr(1);
-                changed = true;
             }
             if (field.endsWith('"')) {
                 field = field.substr(0, field.length - 1);
-                changed = true;
             }
-
-            if (changed) {
-                console.log("TidyUpField: Org field: " + orgField + ", tidied field: " + field);
-            }
-
             return field;
         }
 
@@ -1142,6 +1190,9 @@
         }
 
         function generateSpecificationValue(entityId, specifications, line) {
+            console.log("generateSpecificationValue:");
+            console.log(specifications);
+
             var localeStringFields = new Object();
             var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: [] };
             var valuePartLine = line.slice(2);
@@ -1151,7 +1202,7 @@
                 specificationValue = new Object();
                 specificationValue.specificationFieldTypeId = specifications[i].specificationField.id;
                 if (specifications[i].specificationField.dataType === "CVL" && specifications[i].specificationField.isMultiValue) {
-                    specificationValue.value = valuePartLine[i].split(',');
+                    specificationValue.value = valuePartLine[i].split(cvlSeparator);
                 } else if (specifications[i].specificationField.dataType === "LocaleString") {
                     if (localeStringFields[specifications[i].specificationField.id] === undefined) {
                         localeStringFields[specifications[i].specificationField.id] = new Object();
@@ -1239,24 +1290,37 @@
 </head>
 <body>
     <div class="container">
-        <h1>Specification Import Export</h1>
+        <div class="row">
+            <div class="col-lg-10">
+                <h1>Specification Import Export</h1>
+            </div>
+            <div class="col-lg-2 pull-right">
+                <br />
+                <br />
+                Separator:&nbsp;&nbsp;
+                <select name="csvDividerSelect" onchange="setCsvDivider()">
+                    <option value="comma" selected=""> ,</option>
+                    <option value="semicolon"> ;</option>
+                </select>
+            </div>
+        </div>
         <div class="row">
             <table class="table table-bordered">
                 <thead class="thead-dark">
-                <tr>
-                    <th scope="col">Step</th>
-                    <th scope="col">Selection</th>
-                </tr>
+                    <tr>
+                        <th scope="col">Step</th>
+                        <th scope="col">Selection</th>
+                    </tr>
                 </thead>
                 <tbody>
-                <tr>
-                    <td>Workarea:</td>
-                    <td id="workareaselection"></td>
-                </tr>
-                <tr id="specificationtemplaterow">
-                    <td>Specification template:</td>
-                    <td id="specificationtemplateselection"></td>
-                </tr>
+                    <tr>
+                        <td>Workarea:</td>
+                        <td id="workareaselection"></td>
+                    </tr>
+                    <tr id="specificationtemplaterow">
+                        <td>Specification template:</td>
+                        <td id="specificationtemplateselection"></td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -1269,7 +1333,7 @@
                 <div class="row">
                     <div class="col-lg-4">
                         <div class="row">
-                            <input type="file" id="doImport" accept=".csv,.xlsx,.xls"/>
+                            <input type="file" id="doImport" accept=".csv,.xlsx" />
                         </div>
                     </div>
                     <div class="col-lg-8">
@@ -1299,18 +1363,26 @@
                 <div class="row">
                     <table class="table table-bordered">
                         <tbody>
-                        <tr id="fieldtyperow">
-                            <td>Select fields:</td>
-                            <td id="fieldtypeselection"></td>
-                        </tr>
+                            <tr id="fieldtyperow">
+                                <td>Select fields:</td>
+                                <td id="fieldtypeselection"></td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="row">
-                    <button onclick="doExport()" class="btn btn-primary" id="doExport">Export</button>
+                    <div class="col-lg-2">
+                        <button onclick="doExport()" class="btn btn-primary" id="doExport">Export</button>
+                    </div>
+                    <div class="col-lg-2">
+                        <select name="exportFormatSelect">
+                            <option value="csv" selected=""> CSV</option>
+                            <option value="xlsx"> XLSX</option>
+                        </select>
+                    </div>
                 </div>
             </div>
-        </div>        
+        </div>
         <div class="row">
             <br />
             <br />
