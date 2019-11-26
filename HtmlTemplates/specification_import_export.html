@@ -985,9 +985,11 @@
 
         function download(filename, data, exportFormat) {
             if (exportFormat === "csv") {
-                var csv = data.forEach(function(line) {
-                    return line.join(csvDivider);
-                }).join('\n');
+                var csv = "";
+                data.forEach(function (line) {
+                    var csvFields = line.join(csvDivider) + '\n';
+                    csv += csvFields;
+                });
 
                 var element = document.createElement('a');
                 element.setAttribute('href', 'data:text/csv;charset=utf-8,' + csv);
@@ -1028,10 +1030,10 @@
 
         function getAsText(fileToRead) {
             var reader = new FileReader();
-            if (fileToRead.endswith("csv")) {
-                reader.readAsText(fileToRead);
+            if (fileToRead.name.endsWith(".csv")) {
                 reader.onload = loadHandlerCsv;
                 reader.onerror = errorHandler;
+                reader.readAsText(fileToRead);
             } else {
                 reader.onload = loadHandlerXlsx;
                 reader.onerror = errorHandler;
@@ -1044,7 +1046,7 @@
             if (csv.split(/\r\n|\n/)[0].split(',').length > 1) {
                 csvDivider = ',';
             } else {
-                csvDivider = ',';
+                csvDivider = ';';
             }
             toggleCvlSeparator();
 
