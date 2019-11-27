@@ -924,17 +924,20 @@
             console.log("entitiesWithSelectedSpecification:");
             console.log(entitiesWithSelectedSpecification);
 
-            var exportFormat = getExportFormat();
+            var exportFormat = getSelectedExportFormat();
 
             var data = [];
             var header = _.map(predefinedColumns, function (column) { return column.columnName; });
             specificationFields.forEach(function (spec, index) {
                 if (spec.dataType === "LocaleString") {
-                    header.push(generateHeaderForLocaleString(spec.name[language]));
+                    generateHeaderForLocaleString(spec.name[language]).forEach(function(ls) {
+                        header.push(ls);
+                    });
                 } else {
                     header.push(spec.name[language]);
                 }
             });
+            console.log(header);
             data.push(header);
 
             if (exportFormat === "xlsx") {
@@ -953,8 +956,12 @@
                         fieldValue = field.displayValue;
                     }
 
+                    var push = true;
                     if (field.specificationDataType === "LocaleString") {
-                        fieldValue = splitLocaleStringToColumnValues(field.value);
+                        splitLocaleStringToColumnValues(field.value).forEach(function(ls) {
+                            line.push(ls);
+                        });
+                        push = false;
                     } else if (field.specificationDataType === "DateTime") {
                         fieldValue = new Date(field.value).toISOString();
                     } else if (field.specificationDataType === "CVL" && field.isMultiValue) {
@@ -963,7 +970,9 @@
                     else if (field.unit.length > 0 || field.specificationDataType === "CVL") {
                         fieldValue = field.value;
                     }
-                    line.push(fieldValue);
+                    if (push) {
+                        line.push(fieldValue);
+                    }
                 });
                 data.push(line);
             });
@@ -973,21 +982,17 @@
         }
 
         function generateHeaderForLocaleString(specificationName) {
-            var result = "";
-            var divider = "";
+            var result = [];
             allLanguages.forEach(function (language, index) {
-                result += divider + specificationName + "_" + language.name;
-                divider = csvDivider;
+                result.push(specificationName + "_" + language.name);
             });
             return result;
         }
 
         function splitLocaleStringToColumnValues(localeString) {
-            var result = "";
-            var divider = "";
+            var result = [];
             allLanguages.forEach(function (language, index) {
-                result += divider + localeString[language.name];
-                divider = csvDivider;
+                result.push(localeString[language.name]);
             });
             return result;
         }
@@ -1014,7 +1019,7 @@
             }
         }
 
-        function getExportFormat() {
+        function getSelectedExportFormat() {
             var exportFormat = "xlsx";
             var exportFormatSelection = document.getElementsByName("exportFormatSelect");
             for (var i = 0; i < exportFormatSelection.length; ++i) {
@@ -1179,8 +1184,6 @@
 
                     document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
 
-                    createCvlValuesIfMissing(headerVerification.specificationFieldsMatchingHeader, entitiesAndSpecificationsToUpdate);
-
                     entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
                         throttle.ajax({
                             type: "PUT",
@@ -1228,34 +1231,29 @@
             }
         }
 
-        function createCvlValuesIfMissing(specifications, entitiesAndSpecificationsToUpdate) {
-            console.log('createCvlValuesIfMissing: entitiesAndSpecificationsToUpdate');
-            console.log(entitiesAndSpecificationsToUpdate);
-            console.log(specifications);
-
-            entitiesAndSpecificationsToUpdate.forEach(function(entityAndSpecification) {
-                entityAndSpecification.specificationValuesForUpdate.forEach(function(specificationToUpdate) {
-                    var specification = specifications.find(function (specField) {
-                        return specField.specificationField.id == specificationToUpdate.specificationFieldTypeId;
-                    });
-                    console.log(specification);
-                    if (specification.specificationField.dataType === "CVL") {
-                        var matchingCvl = allCvls.find(function(cvl) {
-                            return cvl.id === specification.specificationField.cvlId;
-                        });
-                        console.log(matchingCvl);
-                        specificationToUpdate.value.forEach(function (cvlValue) {
-                            var matchingCvlValue = matchingCvl.values.find(function(value) {
-                                return value.key === cvlValue;
-                            });
-                            console.log(matchingCvlValue);
-                            if (matchingCvlValue === undefined) {
-                                console.log("Add CVL value: " + cvlValue);
-                            }
-                        });
-                    }
-                });
+        function validateCvlKeys(cvlKeys, cvlId) {
+            var matchingCvl = allCvls.find(function(cvl) {
+                return cvl.id === cvlId;
             });
+
+            var result = [];
+            cvlKeys.forEach(function (cvlKey) {
+                var matchingCvlValue = matchingCvl.values.find(function(value) {
+                    return value.key === cvlKey;
+                });
+                if (matchingCvlValue === undefined) {
+                    result.push(cvlKey);
+                }
+            });
+            return result.join(', ');
+        }
+
+        function createLocalString(cvlValue) {
+            var localeString = new Object();
+            allLanguages.forEach(function(lang) {
+                localeString[lang.name] = cvlValue;
+            });
+            return localeString;
         }
 
         function generateSpecificationValue(entityId, specifications, line) {
@@ -1275,8 +1273,19 @@
                 specificationValue = new Object();
                 specificationValue.specificationFieldTypeId = specifications[i].specificationField.id;
 
-                if (specifications[i].specificationField.dataType === "CVL" && specifications[i].specificationField.isMultiValue) {
-                    specificationValue.value = valuePartLine[i].split(cvlSeparator);
+                if (specifications[i].specificationField.dataType === "CVL") {
+                    var cvlKeysToValidate = [];
+                    if (specifications[i].specificationField.isMultiValue) {
+                        specificationValue.value = valuePartLine[i].split(cvlSeparator);
+                        cvlKeysToValidate = specificationValue.value;
+                    } else {
+                        specificationValue.value = valuePartLine[i];
+                        cvlKeysToValidate.push(specificationValue.value);
+                    }
+                    var potentialErrorString = validateCvlKeys(cvlKeysToValidate, specifications[i].specificationField.cvlId);
+                    if (potentialErrorString.length > 0) {
+                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> has invalid values: <b>" + potentialErrorString + "</b>");
+                    }
                 } else if (specifications[i].specificationField.dataType === "LocaleString") {
                     if (localeStringFields[specifications[i].specificationField.id] === undefined) {
                         localeStringFields[specifications[i].specificationField.id] = new Object();
