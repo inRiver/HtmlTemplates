@@ -484,6 +484,8 @@
                         cvlWithValues.values = [];
                         allCvls.push(cvlWithValues);
                     });
+                    console.log('allCvls');
+                    console.log(allCvls);
                 },
                 error: function (xhr) {
                     console.log("Error occured.please try again");
@@ -850,7 +852,7 @@
         function fillInBuggedOutSpecificationFields(specificationFields) {
             specificationFields.forEach(function (specificationField, index) {
                 var foundEntity = foundEntities.find(function (entity) {
-                    var specification = findSpecficationById(entity.specification, specificationField.id);
+                    var specification = findSpecificationById(entity.specification, specificationField.id);
                     return specification !== undefined;
                 });
 
@@ -859,7 +861,7 @@
                     return false;
                 }
 
-                var entitySpec = findSpecficationById(foundEntity.specification, specificationField.id);
+                var entitySpec = findSpecificationById(foundEntity.specification, specificationField.id);
 
                 if (entitySpec === undefined) return false;
 
@@ -868,7 +870,7 @@
             });
         }
 
-        function findSpecficationById(specifications, specificationId) {
+        function findSpecificationById(specifications, specificationId) {
             return specifications.find(function (spec) {
                 return spec.specificationFieldTypeId === specificationId;
             });
@@ -942,7 +944,7 @@
             entitiesWithSelectedSpecification.forEach(function (entity, index) {
                 var line = _.map(predefinedColumns, function (column) { return column.exportOperation(entity); });
                 specificationFields.forEach(function (spec, index) {
-                    var field = findSpecficationById(entity.specification, spec.id);
+                    var field = findSpecificationById(entity.specification, spec.id);
                     var fieldValue = field.displayValue;
                     if (field.specificationDataType === "LocaleString") {
                         fieldValue = splitLocaleStringToColumnValues(field.value);
@@ -1161,7 +1163,6 @@
 
                 if (validationFailureHtml.length > 0) {
                     showElement('importFailureRow');
-
                     document.getElementById("validationFailures").innerHTML = validationFailureHtml;
                 } else {
                     var failedEntityIds = [];
@@ -1170,6 +1171,8 @@
                     var totalEntities = entitiesAndSpecificationsToUpdate.length;
 
                     document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
+
+                    createCvlValuesIfMissing(headerVerification.specificationFieldsMatchingHeader, entitiesAndSpecificationsToUpdate);
 
                     entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
                         throttle.ajax({
@@ -1218,6 +1221,36 @@
             }
         }
 
+        function createCvlValuesIfMissing(specifications, entitiesAndSpecificationsToUpdate) {
+            console.log('createCvlValuesIfMissing: entitiesAndSpecificationsToUpdate');
+            console.log(entitiesAndSpecificationsToUpdate);
+            console.log(specifications);
+
+            entitiesAndSpecificationsToUpdate.forEach(function(entityAndSpecification) {
+                entityAndSpecification.specificationValuesForUpdate.forEach(function(specificationToUpdate) {
+                    var specification = specifications.find(function (specField) {
+                        return specField.specificationField.id == specificationToUpdate.specificationFieldTypeId;
+                    });
+                    console.log(specification);
+                    if (specification.specificationField.dataType === "CVL") {
+                        var matchingCvl = allCvls.find(function(cvl) {
+                            return cvl.id === specification.specificationField.cvlId;
+                        });
+                        console.log(matchingCvl);
+                        specificationToUpdate.value.forEach(function (cvlValue) {
+                            var matchingCvlValue = matchingCvl.values.find(function(value) {
+                                return value.key === cvlValue;
+                            });
+                            console.log(matchingCvlValue);
+                            if (matchingCvlValue === undefined) {
+                                console.log("Add CVL value: " + cvlValue);
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
         function generateSpecificationValue(entityId, specifications, line) {
             console.log("generateSpecificationValue:");
             console.log(specifications);
@@ -1230,9 +1263,11 @@
 
             var specificationValue;
             for (var i = 0; i < valuePartLine.length; i++) {
-                var skipValueToUpdate = false;
+                var skipValueIfLocaleString = false;
+
                 specificationValue = new Object();
                 specificationValue.specificationFieldTypeId = specifications[i].specificationField.id;
+
                 if (specifications[i].specificationField.dataType === "CVL" && specifications[i].specificationField.isMultiValue) {
                     specificationValue.value = valuePartLine[i].split(cvlSeparator);
                 } else if (specifications[i].specificationField.dataType === "LocaleString") {
@@ -1240,7 +1275,7 @@
                         localeStringFields[specifications[i].specificationField.id] = new Object();
                     }
                     localeStringFields[specifications[i].specificationField.id][specifications[i].language] = valuePartLine[i];
-                    skipValueToUpdate = true;
+                    skipValueIfLocaleString = true;
                 } else {
                     if (specifications[i].specificationField.dataType === "Integer" ||
                         specifications[i].specificationField.dataType === "Double") {
@@ -1260,7 +1295,7 @@
                     }
                 }
 
-                if (!skipValueToUpdate) {
+                if (!skipValueIfLocaleString) {
                     result.specificationValuesForUpdate.push(specificationValue);
                 }
             }
@@ -1387,7 +1422,7 @@
                 <div class="row" id="importFailureRow">
                     <br />
                     <br />
-                    <p class="failed">Import failed. The following columns are not valid.</p>
+                    <p class="failed" id="failed">Import failed. The following columns are not valid.</p>
                     <ul id="validationFailures"></ul>
                 </div>
             </div>
