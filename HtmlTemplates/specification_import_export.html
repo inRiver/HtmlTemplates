@@ -945,7 +945,14 @@
                 var line = _.map(predefinedColumns, function (column) { return column.exportOperation(entity); });
                 specificationFields.forEach(function (spec, index) {
                     var field = findSpecificationById(entity.specification, spec.id);
-                    var fieldValue = field.displayValue;
+
+                    var fieldValue;
+                    if (field.specificationDataType === "CVL") {
+                        fieldValue = field.value;
+                    } else {
+                        fieldValue = field.displayValue;
+                    }
+
                     if (field.specificationDataType === "LocaleString") {
                         fieldValue = splitLocaleStringToColumnValues(field.value);
                     } else if (field.specificationDataType === "DateTime") {
