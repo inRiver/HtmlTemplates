@@ -822,7 +822,7 @@
         function fillInBuggedOutSpecificationFields(specificationFields) {
             specificationFields.forEach(function (specificationField, index) {
                 var foundEntity = foundEntities.find(function (entity) {
-                    var specification = findSpecficationById(entity.specification, specificationField.id);
+                    var specification = findSpecificationById(entity.specification, specificationField.id);
                     return specification !== undefined;
                 });
 
@@ -831,7 +831,7 @@
                     return false;
                 }
 
-                var entitySpec = findSpecficationById(foundEntity.specification, specificationField.id);
+                var entitySpec = findSpecificationById(foundEntity.specification, specificationField.id);
 
                 if (entitySpec === undefined) return false;
 
@@ -840,7 +840,7 @@
             });
         }
 
-        function findSpecficationById(specifications, specificationId) {
+        function findSpecificationById(specifications, specificationId) {
             return specifications.find(function (spec) {
                 return spec.specificationFieldTypeId === specificationId;
             });
