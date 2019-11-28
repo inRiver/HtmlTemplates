@@ -965,7 +965,7 @@
                     } else if (field.specificationDataType === "DateTime") {
                         fieldValue = new Date(field.value).toISOString();
                     } else if (field.specificationDataType === "CVL" && field.isMultiValue) {
-                        fieldValue = fieldValue.join(cvlSeparator);
+                        fieldValue = fieldValue != null ? fieldValue.join(cvlSeparator) : [];
                     }
                     else if (field.unit.length > 0 || field.specificationDataType === "CVL") {
                         fieldValue = field.value;
@@ -1292,22 +1292,20 @@
                     }
                     localeStringFields[specifications[i].specificationField.id][specifications[i].language] = valuePartLine[i];
                     skipValueIfLocaleString = true;
+                } else if (specifications[i].specificationField.dataType === "Integer" ||
+                    specifications[i].specificationField.dataType === "Double") {
+                    specificationValue.value = Number(valuePartLine[i]);
+                } else if (specifications[i].specificationField.dataType === "Boolean") {
+                    specificationValue.value = valuePartLine[i].toLowerCase() === "true";
                 } else {
-                    if (specifications[i].specificationField.dataType === "Integer" ||
-                        specifications[i].specificationField.dataType === "Double") {
-                        specificationValue.value = Number(valuePartLine[i]);
-                    } else if (specifications[i].specificationField.dataType === "Boolean") {
-                        specificationValue.value = valuePartLine[i].toLowerCase() === "true";
-                    } else {
-                        specificationValue.value = valuePartLine[i];
-                    }
+                    specificationValue.value = valuePartLine[i];
+                }
 
-                    var validationFunction = validations[specifications[i].specificationField.dataType];
-                    if (validationFunction !== undefined) {
-                        if (!validationFunction(specificationValue.value)) {
-                            console.log("validation failed: " + specificationValue.value);
-                            result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> with value <b>" + specificationValue.value + "</b> is not valid");
-                        }
+                var validationFunction = validations[specifications[i].specificationField.dataType];
+                if (validationFunction !== undefined) {
+                    if (!validationFunction(specificationValue.value)) {
+                        var formatHint = specifications[i].specificationField.dataType === "DateTime" ? ". Format must follow ISO 8601 i.e. 'YYYY-MM-DDTHH:MM:SS.sZ'" : "";
+                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> with value <b>" + valuePartLine[i] + "</b> is not valid" + formatHint);
                     }
                 }
 
@@ -1380,7 +1378,7 @@
             <div class="col-lg-2 pull-right">
                 <br />
                 <br />
-                Separator:&nbsp;&nbsp;
+                CSV separator:&nbsp;&nbsp;
                 <select name="csvDividerSelect" onchange="setCsvDivider()">
                     <option value="comma" selected=""> ,</option>
                     <option value="semicolon"> ;</option>
@@ -1459,8 +1457,8 @@
                     </div>
                     <div class="col-lg-2">
                         <select name="exportFormatSelect">
-                            <option value="csv" selected=""> CSV</option>
-                            <option value="xlsx"> XLSX</option>
+                            <option value="xlsx" selected> XLSX</option>
+                            <option value="csv"> CSV</option>
                         </select>
                     </div>
                 </div>
