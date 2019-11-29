@@ -359,8 +359,6 @@
             if (!xlf.addEventListener) return;
             function handleFile(e) { doImport(e.target.files); }
             xlf.addEventListener('change', handleFile, false);
-
-            setCsvDivider();
         }
 
         function setCsvDivider() {
@@ -381,7 +379,7 @@
 
             toggleCvlSeparator();
 
-            console.log('setCsvDivider: ' + csvDivider);
+            console.log('setCsvDivider: csvDivider = ' + csvDivider + ', cvlSeparator = ' + cvlSeparator);
         }
 
         function toggleCvlSeparator()
@@ -940,6 +938,7 @@
             console.log(header);
             data.push(header);
 
+            setCsvDivider();
             if (exportFormat === "xlsx") {
                 cvlSeparator = ',';
             }
