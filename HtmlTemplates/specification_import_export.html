@@ -1032,6 +1032,8 @@
         }
 
         function doImport(files) {
+            hideElement('importFailureRow');
+
             console.log(files);
             // Check for the various File API support.
             if (window.FileReader) {
@@ -1358,7 +1360,6 @@
                     }
                     result.specificationFieldsMatchingHeader.push({ specificationField: specificationField, language: columnLanguage });
                 }
-
             }
 
             console.log('Header verification:');
@@ -1372,18 +1373,7 @@
 <body>
     <div class="container">
         <div class="row">
-            <div class="col-lg-10">
-                <h1>Specification Import Export</h1>
-            </div>
-            <div class="col-lg-2 pull-right">
-                <br />
-                <br />
-                CSV separator:&nbsp;&nbsp;
-                <select name="csvDividerSelect" onchange="setCsvDivider()">
-                    <option value="comma" selected=""> ,</option>
-                    <option value="semicolon"> ;</option>
-                </select>
-            </div>
+            <h1>Specification Import Export</h1>
         </div>
         <div class="row">
             <table class="table table-bordered">
@@ -1455,10 +1445,18 @@
                     <div class="col-lg-2">
                         <button onclick="doExport()" class="btn btn-primary" id="doExport">Export</button>
                     </div>
-                    <div class="col-lg-2">
+                    <div class="col-lg-4">
+                        File format:
                         <select name="exportFormatSelect">
                             <option value="xlsx" selected> XLSX</option>
                             <option value="csv"> CSV</option>
+                        </select>
+                    </div>
+                    <div class="col-lg-4">
+                        CSV separator:
+                        <select name="csvDividerSelect" onchange="setCsvDivider()">
+                            <option value="comma" selected=""> ,</option>
+                            <option value="semicolon"> ;</option>
                         </select>
                     </div>
                 </div>
