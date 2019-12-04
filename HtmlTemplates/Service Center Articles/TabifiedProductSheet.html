@@ -2,224 +2,202 @@
 <html lang="en" class="no-js">
 <head>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
-    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
     <script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.8.3/underscore.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/backbone.js/1.2.3/backbone.js"></script>
-    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Ubuntu:300,400" />
 
-</head>
+    <link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
 
+    <script>
+        var categories = ["General"];
+        var fieldPropertyNames;
+        var entity;
 
-<script>
-    var categories = [ "General" ];
-    var statuses = ["Redyforpublish", "Under Enrichment", "Ready for Approval", "Approved", "Ready to Publish"];
-    var fieldPropertyNames;
-    var entity;
+        window.onload = function () {
+            entity = data[0];
 
+            fieldPropertyNames = getFieldNames(entity.fields);
+            for (var i = 0; i < fieldPropertyNames.length; i++) {
+                var categoryId = entity.fields[fieldPropertyNames[i]].categoryId;
+                if (categories.find(function (c) {
+                    return c === categoryId;
+                }) === undefined) {
+                    categories.push(categoryId);
+                }
+            }
 
-    window.onload = function () {
- 	  fieldPropertyNames = _keys(data[0].fields);
-      console.log(fieldPropertyNames);
-      for (var i = 0; i < fieldPropertyNames.length; i++)
-      {
-      		var categoryId = data[0].fields[fieldPropertyNames[i]].categoryId;
-        	if (categories.find(function(c) {
-          		return c === categoryId;
-        	}) === undefined) {
-          		categories.push(categoryId);
-        	}
-      	}
-      	console.log(categories);
+            var allFieldsByCategoryTemplate = $("#allFieldsByCategoryTemplate").html();
+            $("#headerSection").after(_.template(allFieldsByCategoryTemplate, { categories: categories }));
 
-      	entity = data[0];
+            var subEntitiesTemplate = $("#subEntitiesTemplate").html();
+            $("#subEntities").after(_.template(subEntitiesTemplate));
 
-      	var template = $("#fullHtmlTemplate").html();
-  		$("#mainBody").html(_.template(template,{categories:categories}));
+            $("#tabs").tabs();
+        }
 
-      	$("#tabs").tabs();
-    }
+        function getFieldNames(fields) {
+            if (!isObject(fields)) return [];
+            if (Object.keys) return Object.keys(fields);
+            var keys = [];
+            for (var key in fields) if (_.has(fields, key)) keys.push(key);
+            return keys;
+        }
 
-    function _keys(obj)
- 	{
-      if (!isObject(obj)) return [];
-      if (Object.keys) return Object.keys(obj);
-      var keys = [];
-      for (var key in obj) if (_.has(obj, key)) keys.push(key);
-      return keys;
-  	}
+        function isObject(obj) {
+            var type = typeof obj;
+            return type === 'function' || type === 'object' && !!obj;
+        }
+    </script>
 
-    function isObject(obj)
-	{
-    	var type = typeof obj;
-    	return type === 'function' || type === 'object' && !!obj;
-  	}
-</script>
+    <style type="text/css">
 
+        .tab {
+            font-family: 'Lato', Arial, sans-serif;
+            font-size: 13px;
+        }
 
+        table {
+            border-collapse: collapse;
+        }
 
+            table .stat {
+                border: 0px;
+            }
 
-<style type="text/css">
+        td {
+            padding-right: 15px;
+            padding-top: 3px;
+            padding-bottom: 3px;
+            border: 1px solid #ddd;
+            border-collapse: collapse;
+        }
 
-    .tab {
-        font-family: 'Lato', Arial, sans-serif;
-        font-size: 13px;
-    }
+        .tdleft {
+            font-weight: bold;
+            border: 1px solid #ddd;
+            border-collapse: collapse;
+            -webkit-column-width: 500px; /* Chrome, Safari, Opera */
+            -moz-column-width: 500px; /* Firefox */
+            column-width: 500px;
+        }
 
-    table {
-        border-collapse: collapse;
-    }
+        .tdlabel {
+            font-weight: bold;
+            -webkit-column-width: 400px; /* Chrome, Safari, Opera */
+            -moz-column-width: 400px; /* Firefox */
+            column-width: 400px;
+        }
 
-        table .stat {
-            border: 0px;
+        .newColGreen {
+            background-color: green;
         }
 
 
 
+        .newColNone {
+            border: 0px solid #ddd;
+            border-collapse: collapse;
+        }
 
-    td {
-        padding-right: 15px;
-        padding-top: 3px;
-        padding-bottom: 3px;
-        border: 1px solid #ddd;
-        border-collapse: collapse;
-    }
+        tr {
+            padding-top: 15px;
+            padding-bottom: 15px;
+        }
 
-    .tdleft {
-        font-weight: bold;
-        border: 1px solid #ddd;
-        border-collapse: collapse;
-        -webkit-column-width: 500px; /* Chrome, Safari, Opera */
-        -moz-column-width: 500px; /* Firefox */
-        column-width: 500px;
-    }
+        #attributes tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
 
-    .tdlabel {
-        font-weight: bold;
-        -webkit-column-width: 400px; /* Chrome, Safari, Opera */
-        -moz-column-width: 400px; /* Firefox */
-        column-width: 400px;
-    }
+        #stat tr:nth-child(even) {
+            background-color: #f2fff2;
+        }
 
-    .newColGreen {
-        background-color: green;
-    }
-
-
-
-    .newColNone {
-        border: 0px solid #ddd;
-        border-collapse: collapse;
-    }
-
-    tr {
-        padding-top: 15px;
-        padding-bottom: 15px;
-    }
-
-    #attributes tr:nth-child(even) {
-        background-color: #f2f2f2;
-    }
-
-    #stat tr:nth-child(even) {
-        background-color: #f2fff2;
-    }
-
-    #attributes td {
-        border: 1px solid #ddd;
-        border-collapse: collapse;
-    }
-</style>
-
-
-<script type="foo/bar" id="fullHtmlTemplate">
-    <div id="tabs">
-        <ul>
+        #attributes td {
+            border: 1px solid #ddd;
+            border-collapse: collapse;
+        }
+    </style>
+    
+    <script type="foo/bar" id="allFieldsByCategoryTemplate">
+        <div id="tabs">
+            <ul>
+                <%
+                _.each(categories, function(category, key, list) {
+                %>
+                <li><a href=#<%= category%>><%= category%></a></li>
+                <%
+                });
+                %>
+            </ul>
             <%
             _.each(categories, function(category, key, list) {
             %>
-            <li><a href=#<%= category%>><%= category%></a></li>
-            <%
-            });
-            %>
-        </ul>
-        <%
-        _.each(categories, function(category, key, list) {
-        %>
-        <div id='<%= category%>'>
-            <div>
-                <img style='max-width: 250px; float:right;border-style:solid;border-width:10px;border-color:white;' src='<%= entity.displayPicture%>' />
-            </div>
-            <table id='attributes'>
-                <%
-                var myFields = [];
-                fieldPropertyNames.forEach(function(fieldName, index) {
-                var field = entity.fields[fieldName];
-                if (field.categoryId === category) {
-                field.fieldName = fieldName;
-                myFields.push(field);
-                }
-                });
-                myFields.forEach(function(field, index) {
-                %>
-                <tr>
-                    <td class='tdleft'>
-                        <%= field.label %>
-                    </td>
-                    <td>
-                        <%= field.value %>
-                    </td>
-                    <td>
-                        <span inriver-field-editor="<%= field.fieldName %>"></span>
-                    </td>
-                </tr>
-                <% }); %>
-            </table>
-            <%
-            if (category === "General") {
-            %>
-            <br /><hr /><br />
-            <table id='stat' border='0'>
-                <%
-                var fields = [];
-                fieldPropertyNames.forEach(function(fieldName, index) {
-                fields.push(entity.fields[fieldName]);
-                });
-                fields.forEach(function(field, index) {
-                var colStatus = "newColGreen";
-                if (field.label.includes("Status")) {
-                %>
-                <tr>
-                    <td class=tdlabel><%= field.label%></td>
+            <div id='<%= category%>'>
+                <table id='attributes'>
                     <%
-                    if (field.value.length == 0)
-                    {
-                    colStatus = "newColNone";
+                    var myFields = [];
+                    fieldPropertyNames.forEach(function(fieldName, index) {
+                    var field = entity.fields[fieldName];
+                    if (field.categoryId === category) {
+                    field.fieldName = fieldName;
+                    myFields.push(field);
+                    }
+                    });
+                    myFields.forEach(function(field, index) {
                     %>
-                    <td width='50px' class='newColNone'>&nbsp;</td>
-                    <% }
-
-                    statuses.forEach(function(status, index) {
-                    if (field.value === status)
-                    {
-                    colStatus = "newColNone";
-                    }%>
-                    <td width='50px' class='<%= colStatus%>'>&nbsp;</td>
+                    <tr>
+                        <td class='tdleft'>
+                            <%= field.label %>
+                        </td>
+                        <td>
+                            <%= field.value %>
+                        </td>
+                        <td>
+                            <span inriver-field-editor="<%= field.fieldName %>"></span>
+                        </td>
+                    </tr>
                     <% }); %>
-
-                    <td><%= field.value%></td>
-                </tr>
-                <%
-                }
-                });
-                %>
-            </table>
-            <% } %>
+                </table>
+            </div>
+            <% }); %>
         </div>
-        <% }); %>
-    </div>
-</script>
+    </script>
+    
+    <script type="foo/bar" id="subEntitiesTemplate">
+        <table>
+            <%
+            entity.subEntities.forEach(function(subEntity, index) {
+            %>
+            <tr>
+                <td class='tdleft'>
+                    <%= subEntity.displayName %>
+                </td>
+                <td>
+                    <%= subEntity.displayDescription %>
+                </td>
+                <td>
+                    <img style='max-width: 64px; float:right;border-style:solid;border-width:10px;border-color:white;' src='<%= subEntity.displayPicture %>' />
+                </td>
+            </tr>
+            <% }); %>
+        </table>
+    </script>
+</head>
 
-<body id="mainBody">
+<body>
+    <div id="headerSection" class="row">
+        <div class="col-lg-8">
+            <h1>{{inriver:fields.productName.value}}{{inriverfieldeditor:productName}}</h1>
+            <h2>{{inriver:fields.productShortDescription.value}}{{inriverfieldeditor:productShortDescription}}</h2>
+        </div>
+        <div class="col-lg-4">
+            <img style='max-width: 250px; float:right;border-style:solid;border-width:10px;border-color:white;' src='{{inriver:displayPicture}}' />
+        </div>
+    </div>
+    <br />
+    <br />
+    <h1>Sub entities</h1>
+    <div id="subEntities" class="row">
+    </div>
 </body>
 </html>
