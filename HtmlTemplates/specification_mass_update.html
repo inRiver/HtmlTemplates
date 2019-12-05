@@ -552,7 +552,7 @@
 
             if (value === "none") return;
 
-            var foundEntities;
+            var entities;
             $.ajax({
                 type: "GET",
                 dataType: "json",
@@ -566,10 +566,10 @@
                 url: baseUrl + "workareafolder/" + value + "/entitylist",
                 processData: false,
                 success: function (entitylist) {
-                    foundEntities = entitylist;
+                    entities = entitylist;
 
-                    console.log("foundEntitiesShort:");
-                    console.log(foundEntities);
+                    console.log("entities:");
+                    console.log(entities);
                 }, error: function (xhr) {
                     console.log("Error occured.please try again" + xhr);
                 },
@@ -581,8 +581,11 @@
 
                     hideSelectFields();
 
+
                     specifications = new Object();
-                    var chunkedFoundEntityIds = chunk(foundEntities.entityIds, chunkSize);
+                    var chunkedFoundEntityIds = chunk(entities.entityIds, chunkSize);
+
+                    foundEntities = [];
                     console.log('chunkedFoundEntityIds');
                     console.log(chunkedFoundEntityIds);
                     let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
@@ -621,7 +624,7 @@
                 processData: false,
                 success: function (entities) {
 
-                    foundEntities = entities;
+                    foundEntities = foundEntities.concat(entities);
 
                     console.log("Success fetching entities");
                     console.log(entities);
@@ -751,7 +754,7 @@
                         }
                     });
 
-                    fillInBuggedOutSpecificationFields(specificationFieldsArray);
+                    ensureSpecificationFields(specificationFieldsArray);
 
                 }, error: function (xhr) {
                     console.log("Error occured.please try again: " + xhr);
@@ -819,7 +822,7 @@
             }
         }
 
-        function fillInBuggedOutSpecificationFields(specificationFields) {
+        function ensureSpecificationFields(specificationFields) {
             specificationFields.forEach(function (specificationField, index) {
                 var foundEntity = foundEntities.find(function (entity) {
                     var specification = findSpecificationById(entity.specification, specificationField.id);
