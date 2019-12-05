@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Field Type Edit</title>
+    <script src="https://code.jquery.com/jquery-3.4.1.min.js" type="text/javascript"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Trumbowyg/2.19.1/trumbowyg.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Trumbowyg/2.19.1/ui/trumbowyg.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/js/all.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.11.2/css/all.min.css">
+
+    <style>
+        :root {
+            --wsiwyg-min-height: 200px;
+            --wsiwyg-max-height: 200px;
+            --btn-min-width: 125px;
+            --color-working: #4e8eed;
+            --color-success: green;
+            --color-error: red;
+        }
+        /* override Trumbowyg css settings */
+        #wysiwyg {
+            min-height: var(--wsiwyg-min-height);
+            max-height: var(--wsiwyg-max-height);
+            background-color: white;
+            color: black;
+        }
+        .trumbowyg-box, .trumbowyg-editor { min-height: var(--wsiwyg-min-height); }
+        .btn-display { min-width: var(--btn-min-width); }
+        .display-inline { display: inline-block;  padding-right: 5px; }
+        .processingIndicator {
+            display: none;
+            position: absolute;
+            top: 4px;
+            right: 145px;
+            padding-right: 5px;
+        }
+        #processingSpinner {color: var(--color-working) }
+        .success {color: var(--color-success) }
+        .error {color: var(--color-error) }
+    </style>
+
+</head>
+<body>
+
+<div id="wysiwygTemplate" class="container-fluid">
+    <div class="row">
+        <div class="col-lg-10 col-lg-offset-1 col-md-10 col-md-offset-1 col-sm-10 col-xs-10">
+            <h3 style="margin-bottom: 20px;">Edit Description Fields</h3>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-lg-10 col-lg-offset-1 col-md-10 col-md-offset-1 col-sm-10 col-xs-10">
+            <!--  Buttons  -->
+            <div class="row">
+                <div class="col-lg-7 col-md-7 col-sm-8 col-xs-12">
+                    <div id="languageSelectBtn" class="dropdown display-inline">
+                        <button class="btn btn-default dropdown-toggle btn-display" type="button" id="languageMenu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                            Language
+                            <span class="caret"></span>
+                        </button>
+                        <ul id="languageList" class="dropdown-menu" aria-labelledby="languageSelectBtn"></ul>
+                    </div>
+                    <div id="DescriptionFieldsBtn" class="dropdown display-inline" style="display: none;">
+                        <button class="btn btn-default dropdown-toggle btn-display" type="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                            Description Field
+                            <span class="caret"></span>
+                        </button>
+                        <ul id="fieldTypeList" class="dropdown-menu" aria-labelledby="DescriptionFieldsBtn"></ul>
+                    </div>
+                </div>
+                <div class="col-lg-5 col-md-5 col-sm-4 col-xs-12">
+                    <div class="btn-display pull-right">
+                        <div id="processingSpinner" class="display-inline processingIndicator">
+                            <i class="fa fa-spinner fa-spin fa-2x fa-fw"></i>
+                        </div>
+                        <div id="processingSuccess" class="display-inline processingIndicator" style="display: none;">
+                            <i class="fa fa-check-circle fa-2x success"></i>
+                        </div>
+                        <div id="processingError" class="display-inline processingIndicator" style="display: none;">
+                            <i class="fa fa-times-circle fa-2x error"></i>
+                        </div>
+                        <button id="saveBtn" class="btn btn-primary" style="margin-right: 5px;">Save</button>
+                        <button id="clearWsiwygBtn" class="btn btn-default">Clear</button>
+                    </div>
+                </div>
+            </div>
+            <!--  WSIWYG Editor  -->
+            <div class="row">
+                <div class="col-lg-12 col-md-12 col-sm-12 col-xs-12">
+                    <div id="wsiwygContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    console.log('loading....');
+    let apiKey, baseUrl, entityBaseUrl, $wsiwyg, theHtml, $processingSpinner, productId, editableFieldTypeList, editableFieldTypes;
+    let entityFieldBaseUrl, entityWithFieldsBaseUrl, modelLanguagesUrl;
+    let productData = this.data;
+
+    /**
+     * Main
+     */
+    let runMain = function(){
+        //showPageLoadMsg();
+        setClassVariables();
+        setLanguageSelectList();
+        setEditableFieldSelectList();
+        bindSaveBtn();
+        bindClearBtn();
+        createWsiwygContainer();
+        $wsiwyg.trumbowyg()
+    };
+
+
+    /**
+     * Set all class variables
+     */
+    let setClassVariables = function(){
+        //apiKey = '1153307dd7a4bf696cc305eba5252f7c';  //academy120
+        //apiKey = 'd004653ce202a0386ddf0b84dfc9e4ca';    // varidesk - test
+        apiKey = '647bcc6eae44d2c6f7fd81ce9b1979cc';    // varidesk - prod
+
+        // baseUrl = 'https://demoapiuse.productmarketingcloud.com/api/v1.0.0/';  // academy
+        //baseUrl = 'https://apiuse.productmarketingcloud.com/api/v1.0.0/';       // varidesk - test
+        baseUrl = 'https://apiuse.productmarketingcloud.com/api/v1.0.0/';         // varidesk - prod
+
+        entityBaseUrl = baseUrl + 'entities/{entityId}/summary';
+        entityWithFieldsBaseUrl = baseUrl + 'entities/{entityId}/summary/fields';
+        entityFieldBaseUrl = baseUrl + 'entities/{entityId}/fieldvalues';
+        modelLanguagesUrl = baseUrl + 'model/languages';
+
+        // FieldTypeId / displayed name
+        editableFieldTypes = {
+            'ProductAccordion1Details': 'Accordion 1 Details',
+            'ProductAccordion2Details': 'Accordion 2 Details',
+            'ProductAccordion3Details': 'Accordion 3 Details',
+            'ProductAccordion4Details': 'Accordion 4 Details',
+            'ProductAccordion5Details': 'Accordion 5 Details',
+            'ProductShortDescription': 'Short Description',
+            'ProductLongDescription': 'Long Description',
+            'ProductB2BLongDescription':'B2B Long Description'
+        };
+
+        editableFieldTypeList = [
+            'ProductAccordion1Details',
+            'ProductAccordion2Details',
+            'ProductAccordion3Details',
+            'ProductAccordion4Details',
+            'ProductAccordion5Details',
+            'ProductShortDescription',
+            'ProductB2BLongDescription',
+            'ProductLongDescription'
+            ];
+
+        $processingSpinner = $('#processingSpinner');
+        //todo for testing only
+        // productId = 74;     // academy ?
+        //productId = 2;      // varidesk - prod
+        productId = 65;      // varidesk - prod
+        if (productData)
+            productId = productData[0].id;
+
+    };
+
+
+    /**
+     * Define the drop down list for the available languages.  Bind click actions, if any
+     */
+    let setLanguageSelectList = function() {
+        let $languageList = $('#languageList');
+        serviceRequest(modelLanguagesUrl)
+            .done(function (languageLocales, status, xhr) {
+                removeProcessingSpinner(true);
+
+                languageLocales.forEach( languageLocale => {
+                    let $a = $('<a></a>', {
+                        'data-value': languageLocale.name,
+                        text: languageLocale.displayName,
+                        class: 'languageOption'
+                    })
+                        .on('click', function () {
+                            let $DescriptionFieldsBtn = $('#DescriptionFieldsBtn');
+                            if ( $DescriptionFieldsBtn.is(':visible') ) {
+                                let selectedProductFieldValue = document.getElementById("DescriptionFieldsBtn").firstChild.nextSibling.value;
+                                getEntityFieldValue(selectedProductFieldValue);
+                            }
+                            else
+                                $DescriptionFieldsBtn.fadeIn();
+
+                        });
+                    $languageList.append( $('<li></li>').append($a) );
+                });
+
+                // set button text to selected value
+                $('.languageOption').on('click', function () {
+                    $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
+                    $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
+                });
+            })
+            .fail(function (jqXHR, textStatus, error) {
+                serviceErrorMsg(jqXHR, textStatus, error);
+            });
+    };
+
+
+    /**
+     * Define the drop down list for the editable field types.  Bind click actions
+     */
+    let setEditableFieldSelectList = function() {
+        let $fieldTypeDropDown = $('#fieldTypeList');
+        $fieldTypeDropDown.empty();
+
+        let fieldStr = editableFieldTypeList.join();
+        let url = entityFieldBaseUrl.replace('{entityId}', productId).concat('?fieldTypeIds=' + fieldStr);
+        serviceRequest(url)
+            .done(function (fieldValueData, status, xhr) {
+                removeProcessingSpinner(true);
+                if ( editableFieldTypeList.length !== fieldValueData.length ) {
+                    //TODO  some of the fieldTypeIds dont exist, do some error handling
+                }
+
+                for (let fieldTypeId in editableFieldTypes) {
+                    if (editableFieldTypes.hasOwnProperty(fieldTypeId)) {
+                        let $a = $('<a></a>', {
+                            'data-value': fieldTypeId,
+                            text: editableFieldTypes[fieldTypeId],
+                            class: 'fieldTypeOption'
+                        })
+                            .on('click', function () {
+                                let selectedProductFieldValue = $(this).data('value');
+                                getEntityFieldValue(selectedProductFieldValue);
+                            });
+
+                        $fieldTypeDropDown.append( $('<li></li>').append($a) );
+                    }
+                }
+
+                $('.fieldTypeOption').on('click', function () {
+                    $(this).parents(".dropdown").find('.btn').html($(this).text() + ' <span class="caret"></span>');
+                    $(this).parents(".dropdown").find('.btn').val($(this).data('value'));
+                });
+
+            })
+            .fail(function (jqXHR, textStatus, error) {
+                serviceErrorMsg(jqXHR, textStatus, error);
+            });
+    };
+
+
+    /**
+     * Get the product Field value from the model
+     */
+    let getEntityFieldValue = function(selectedProductFieldValue) {
+
+        let url = entityFieldBaseUrl.replace('{entityId}', productId).concat('?fieldTypeIds=' + selectedProductFieldValue);
+        serviceRequest(url)
+            .done(function (fieldValueData, status, xhr) {
+                removeProcessingSpinner(true);
+                let language = document.getElementById("languageSelectBtn").firstChild.nextSibling.value;
+                let fieldValueObj = fieldValueData[0].value;
+                $wsiwyg.trumbowyg('html', fieldValueObj[language]);
+            })
+            .fail(function (jqXHR, textStatus, error) {
+                serviceErrorMsg(jqXHR, textStatus, error);
+            });
+    };
+
+
+    /**
+     * Save the WSIWYG html content to the Field
+     * Payload example:
+     *   [{"fieldTypeId": "ProductShortDescription","value": { "en": "Our best selling model \nTwo-tier design", "es-ES": "" }}]
+     */
+    let bindSaveBtn = function() {
+
+        let $saveBtn = $('#saveBtn');
+        $saveBtn.off();
+        $saveBtn.on('click', function () {
+            let markup = $wsiwyg.trumbowyg('html');
+            let language = document.getElementById("languageSelectBtn").firstChild.nextSibling.value;
+            let selectedProductFieldValue = document.getElementById("DescriptionFieldsBtn").firstChild.nextSibling.value;
+            let payload = [];
+            let markupObj = {
+                'fieldTypeId': selectedProductFieldValue,
+                'value': {}
+            };
+            markupObj.value[language] = markup;
+            payload.push(markupObj);
+
+            let url = entityFieldBaseUrl.replace('{entityId}', productId);
+            serviceRequest(url, 'PUT', payload)
+                .done(function (data, status, xhr) {
+                    removeProcessingSpinner(true);
+                })
+                .fail(function (jqXHR, textStatus, error) {
+                    serviceErrorMsg(jqXHR, textStatus, error);
+                });
+        });
+    };
+
+
+    /**
+     * Clear the WSIWYG text area
+     */
+    let bindClearBtn = function() {
+        let $clearWsiwygBtn = $('#clearWsiwygBtn');
+        $clearWsiwygBtn.off();
+        $clearWsiwygBtn.on('click', function () {
+            theHtml = $wsiwyg.trumbowyg('empty');
+        });
+    };
+
+
+    /**
+     * wsiwygWrapper seems redundant, but it is necessary because when we initialize the
+     * wsiwyg editor, it creates a wrapper around the wsiwyg div.  So, to remove the editor
+     * and the wrapper, we need the extra layer
+     */
+    let createWsiwygContainer = function(){
+        $wsiwyg = $('<div></div>', {
+            'id': 'wsiwyg',
+            'class': 'translate'
+        });
+        $('#wsiwygContainer').append($wsiwyg);
+    };
+
+
+    /**
+     * Generic REST call
+     */
+    let serviceRequest = function(URL, httpFunction, payload) {
+        $processingSpinner.fadeIn();
+
+        if (!httpFunction)
+            httpFunction = 'GET';
+
+        let data = {};
+        if (payload)
+            data = JSON.stringify(payload);
+
+        return $.ajax({
+            beforeSend: function (request) {
+                request.setRequestHeader("X-inRiver-APIKey", apiKey);
+                request.setRequestHeader("Accept", "application/json");
+                request.setRequestHeader("Accept-Language", "en");
+            }
+            , url: URL
+            , type: httpFunction
+            , contentType: "application/json"
+            , cache: false
+            , dataType: 'json'
+            , data: data
+            , async: true
+        });
+    };
+
+
+    /**
+     * Generic http error handler
+     */
+    let serviceErrorMsg = function (jqXHR, textStatus, error, customMsg) {
+        removeProcessingSpinner(false);
+        let errorCode = jqXHR.status;
+        switch (errorCode) {
+            case 400:
+                console.log('Error (400): Bad request');
+                break;
+            case 401:
+                console.log('Error (401): Unauthorized');
+                break;
+            case 403:
+                console.log('Error (403): Forbidden');
+                break;
+            case 404:
+                console.log('Error (404): Not Found');
+                break;
+            case 405:
+                console.log('Error (405): Not Found');
+                break;
+            case 500:
+                console.log('Error (500): Internal Server Error');
+                break;
+            case 502:
+                console.log('Error (502): bad gateway');
+                break;
+            default:
+                console.log('Unknown error occurred');
+                break;
+        }
+    };
+
+
+    /**
+     * Spinner, success, and error icon handling
+     */
+    let removeProcessingSpinner = function(success) {
+        $processingSpinner.fadeOut(function () {
+            let $processingResult = $('#processingError');
+            if (success)
+                $processingResult = $('#processingSuccess');
+
+            $processingResult.fadeIn().delay(2000).fadeOut();
+        });
+    };
+
+
+    /**
+     *  Temporary while developing to observe when LiveReload is completed
+     */
+    let showPageLoadMsg = function() {
+        console.log('page loaded');
+        let $msg = $('<div></div>', { text: 'page load', css: {'position': 'absolute', 'height': '30px', 'width': '100px', 'right': 100, 'top': 10, 'color': 'red', 'display': 'none' }  });
+        $('body').append($msg);
+        $msg.fadeIn(500).delay(1000).fadeOut(500);
+    };
+
+    runMain();
+</script>
+
+</body>
+</html>
