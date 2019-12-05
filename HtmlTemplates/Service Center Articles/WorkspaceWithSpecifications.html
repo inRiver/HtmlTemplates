@@ -7,20 +7,12 @@
     <title>Workspace with Specifications</title>
 
     <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.1.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.9.1/underscore-min.js"></script>
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-multiselect/0.9.13/js/bootstrap-multiselect.js"></script>
-
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-multiselect/0.9.13/css/bootstrap-multiselect.css" type="text/css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.7.14/css/bootstrap-datetimepicker.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.15.1/moment.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.7.14/js/bootstrap-datetimepicker.min.js"></script>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/themes/default/style.min.css" />
 
     <style type="text/css">
         table {
@@ -60,60 +52,6 @@
             letter-spacing: .02em;
         }
 
-        #newValueFieldEdit ul {
-            list-style-type: none;
-            column-count: 3;
-        }
-
-        #newValueFieldEdit ul li {
-            position: relative;
-        }
-
-        #newValueFieldEdit ul li > ul {
-            top: -12px;
-            left: 190px;
-            position: absolute;
-            visibility: hidden;
-            z-index: 1;
-            background: #ffffff;
-            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
-            list-style: none;
-            width: 190px;
-            padding: 10px 0;
-            font-size: 14px;
-            line-height: 16px;
-            letter-spacing: .02em;
-        }
-
-        #valueFieldEditDiv {
-            overflow: hidden;
-        }
-
-        input[type=text] {
-            width: 100%;
-        }
-
-        input:invalid {
-            border-color: red;
-        }
-
-        input, input:valid {
-            border-color: #ccc;
-        }
-
-        .invalidTextarea {
-            border-color: red;
-            border-width: 2px;
-        }
-
-        .buttonInvalidForInput {
-            cursor: not-allowed;
-            pointer-events: none;
-            /*Button disabled - CSS color class*/
-            color: #c0c0c0;
-            background-color: #ffffff;
-        }
-
         .loader {
             border: 4px solid #f3f3f3;
             border-radius: 50%;
@@ -127,10 +65,6 @@
         .optionGroup {
             font-weight: bold;
             font-style: italic;
-        }
-
-        #failed {
-            color: red;
         }
 
         @keyframes spin {
@@ -157,10 +91,8 @@
         var workAreasArray;
         var specificationFieldsArray;
         var allCvls = [];
-        var specificationLinkTypes;
         var selectedSpecificationId;
         var specificationLinkTypeIds = "ProductSpecifications,Item2SpecificationCorrect";
-        var showDataType = false;
         var specifications = new Object();
         var specificationMainNameField = 'SpecificationName';
 
@@ -192,10 +124,7 @@
 
         function fetchWorkAreas() {
             $.getJSON(buildAjaxSettings("workareafoldertree?includeCreatedByMe=false"), function(result) {
-                console.log("Success");
-                console.log(result);
                 workAreasArray = result;
-                console.log(workAreasArray.length);
 
                 var workareasselectorhtml = '<div id="workareaselector">';
                 workareasselectorhtml += '<ul>';
@@ -220,7 +149,6 @@
                 $('#workareaselector').jstree("open_node", $('#topLevel'));
 
                 $('#workareaselector').on("changed.jstree", function (e, data) {
-                    console.log(data.node.li_attr.value);
                     fetchspecifications(data.node.li_attr.value);
                 });
 
@@ -265,10 +193,6 @@
                     delimiter = ",";
                 });
 
-                console.log('fetchAllOutboundSpecificationLinkTypeIds');
-                console.log(entityTypes);
-                console.log(specificationLinkTypeIds);
-
                 specificationMainNameField = specification.displayNameFieldTypeId;
             });
         }
@@ -277,8 +201,6 @@
             var cvl = allCvls.find(function (cvl) {
                 return cvl.id === cvlId;
             });
-            console.log("Found cvl for cvlId = " + cvlId);
-            console.log(cvl);
             if (cvl.values.length === 0) {
                 $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values"), function (cvlValues) {
                     cvl.values = cvlValues;
@@ -295,9 +217,6 @@
             $.getJSON(buildAjaxSettings("workareafolder/" + value + "/entitylist"), function (entitylist) {
                 entities = entitylist;
 
-                console.log("entities:");
-                console.log(entities);
-
                 var specificationtemplaterowstyle = document.getElementById('specificationtemplaterow').style;
                 specificationtemplaterowstyle.display = 'table-row';
 
@@ -309,8 +228,6 @@
                 var chunkedFoundEntityIds = chunk(entities.entityIds, chunkSize);
 
                 foundEntities = [];
-                console.log('chunkedFoundEntityIds');
-                console.log(chunkedFoundEntityIds);
                 let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
                 process.done(results => {
                     fillspecificationnames(specifications);
@@ -335,13 +252,7 @@
             });
             return $.post(ajaxSettings,
                 function(entities) {
-
                     foundEntities = foundEntities.concat(entities);
-
-                    console.log("Success fetching entities");
-                    console.log(entities);
-                    console.log(foundEntities);
-
                     for (var i = 0; i < entities.length; i++) {
                         for (var j = 0; j < entities[i].outbound.length; j++) {
                             var specification = entities[i].outbound[j];
@@ -356,9 +267,6 @@
                             }
                         }
                     }
-
-                    console.log("Specifications:");
-                    console.log(specifications);
                 });
         }
 
@@ -421,8 +329,6 @@
         }
 
         function fillspecificationnames(specifications) {
-            console.log('fillspecificationnames() called');
-
             var specificationnamesselectorhtml = '<select id="specificationnameselector" onchange="displayspecificationfields(this.value)">';
             specificationnamesselectorhtml += '<option value="none">-</option>';
             for (var key in specifications) {
@@ -440,9 +346,6 @@
 
             selectedSpecificationId = specificationId;
             $.getJSON(buildAjaxSettings("model/specificationtemplates/" + specificationId + "/fieldtypes"), function (specificationFields) {
-                console.log("Success fetching specification fields:");
-                console.log(specificationFields);
-
                 specificationFieldsArray = specificationFields;
 
                 specificationFieldsArray.forEach(function (item, index) {
@@ -470,16 +373,12 @@
                     }
                 });
 
-                console.log('categoryIds');
-                console.log(categoryIds);
-
                 var fieldspecificationSelectHtml = '<ul><li><input type="checkbox" onclick="checkAllFieldSpecifications()" id="allFieldSpecificationChecker" />&nbsp;Check All</li></ul>';
                 fieldspecificationSelectHtml += '<ul id="fieldtypeselector">';
                 categoryIds.forEach(function (categoryId, index) {
                     fieldspecificationSelectHtml += '<li><b>' + categoryId + '</b></li>';
                     for (var i = 0; i < specificationFieldsArray.length; i++) {
                         var specificationField = specificationFieldsArray[i];
-                        console.log(specificationField);
                         if (!specificationField.isDisabled || specificationField.format !== null) {
                             var disabled = " ";
                             if (categoryId === specificationField.categoryId) {
@@ -503,7 +402,6 @@
 
         function checkAllFieldSpecifications() {
             var checkAllCheckbox = document.getElementById('allFieldSpecificationChecker');
-            console.log('allFieldSpecificationChecker checked = ' + checkAllCheckbox.checked);
             if (checkAllCheckbox.checked == true) {
                 $('#fieldtypeselector input[type="checkbox"').prop('checked', true);
             } else {
@@ -512,9 +410,6 @@
         }
 
         function ensureSpecificationFields(specificationFields) {
-            console.log('ensureSpecificationFields');
-            console.log(specificationFields);
-            console.log(foundEntities);
             specificationFields.forEach(function (specificationField, index) {
                 var foundEntity = foundEntities.find(function (entity) {
                     var specification = findSpecificationById(entity.specification, specificationField.id);
