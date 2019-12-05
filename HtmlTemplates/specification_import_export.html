@@ -295,15 +295,15 @@
 
     <script type="text/javascript">
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
-        var apikey = "391a8bdc903bafb080a12ff756edf0b7";
+        var apiKey = "391a8bdc903bafb080a12ff756edf0b7";
         var language = "en";
-        var baseurl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+        var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
         var chunkSize = 1000;
 
         var foundEntities;
-        var workareasarray;
+        var workAreasArray;
         var specificationFieldsArray;
         var allCvls = [];
         var specificationLinkTypes;
@@ -348,7 +348,7 @@
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
-            fetchworkareas();
+            fetchWorkAreas();
             fetchAllCvls();
             fetchAllLanguages();
             hideSpecificationTemplate();
@@ -392,25 +392,25 @@
 
         }
 
-        function fetchworkareas() {
+        function fetchWorkAreas() {
             $.ajax({
                 type: "GET",
                 dataType: "json",
                 contentType: 'application/json',
                 beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
                     request.setRequestHeader("Accept", "application/json");
                     request.setRequestHeader("Accept-Language", language);
 
                 }, // GET /api/v1.0.0/workareafoldertree
-                url: baseurl + "workareafoldertree?includeCreatedByMe=false",
+                url: baseUrl + "workareafoldertree?includeCreatedByMe=false",
                 processData: false,
                 success: function (workareas) {
                     console.log("Success");
                     console.log(workareas);
                     console.log(workareas);
-                    workareasarray = workareas;
-                    console.log(workareasarray.length);
+                    workAreasArray = workareas;
+                    console.log(workAreasArray.length);
                 }, error: function (xhr) {
                     console.log("Error occured.please try again");
                 },
@@ -419,12 +419,12 @@
                     workareasselectorhtml += '<ul>';
                     workareasselectorhtml += '<li id="topLevel" value="none">Common Shared';
                     workareasselectorhtml += '<ul>';
-                    for (var i = 0; i < workareasarray.length; i++) {
-                        if (workareasarray[i].folders !== undefined) {
-                            workareasselectorhtml += renderWorkareaSubLevels(workareasarray[i]);
+                    for (var i = 0; i < workAreasArray.length; i++) {
+                        if (workAreasArray[i].folders !== undefined) {
+                            workareasselectorhtml += renderWorkareaSubLevels(workAreasArray[i]);
                         }
                         else {
-                            workareasselectorhtml += '<li value="' + workareasarray[i].id + '" >' + workareasarray[i].name + '</li>';
+                            workareasselectorhtml += '<li value="' + workAreasArray[i].id + '" >' + workAreasArray[i].name + '</li>';
                         }
                     }
                     workareasselectorhtml += "</li>";
@@ -469,12 +469,12 @@
                 dataType: "json",
                 contentType: 'application/json',
                 beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
                     request.setRequestHeader("Accept", "application/json");
                     request.setRequestHeader("Accept-Language", language);
 
                 },
-                url: baseurl + "model/cvls",
+                url: baseUrl + "model/cvls",
                 processData: false,
                 success: function (cvls) {
                     cvls.forEach(function (item, index) {
@@ -497,12 +497,12 @@
                 dataType: "json",
                 contentType: 'application/json',
                 beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
                     request.setRequestHeader("Accept", "application/json");
                     request.setRequestHeader("Accept-Language", language);
 
                 },
-                url: baseurl + "model/languages",
+                url: baseUrl + "model/languages",
                 processData: false,
                 success: function (languages) {
                     allLanguages = languages;
@@ -521,12 +521,12 @@
                 dataType: "json",
                 contentType: 'application/json',
                 beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
                     request.setRequestHeader("Accept", "application/json");
                     request.setRequestHeader("Accept-Language", language);
 
                 }, // GET /api/v1.0.0/model/entitytypes
-                url: baseurl + "model/entitytypes",
+                url: baseUrl + "model/entitytypes",
                 processData: false,
                 success: function (entityTypes) {
                     var specification = entityTypes.find(function (entityType) {
@@ -560,12 +560,12 @@
                     dataType: "json",
                     contentType: 'application/json',
                     beforeSend: function (request) {
-                        request.setRequestHeader("X-inRiver-APIKey", apikey);
+                        request.setRequestHeader("X-inRiver-APIKey", apiKey);
                         request.setRequestHeader("Accept", "application/json");
                         request.setRequestHeader("Accept-Language", language);
 
                     },
-                    url: baseurl + "model/cvls/" + cvlId + "/values",
+                    url: baseUrl + "model/cvls/" + cvlId + "/values",
                     processData: false,
                     success: function (cvlValues) {
                         cvl.values = cvlValues;
@@ -588,12 +588,12 @@
                 dataType: "json",
                 contentType: 'application/json',
                 beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
                     request.setRequestHeader("Accept", "application/json");
                     request.setRequestHeader("Accept-Language", language);
 
                 },
-                url: baseurl + "workareafolder/" + value + "/entitylist",
+                url: baseUrl + "workareafolder/" + value + "/entitylist",
                 processData: false,
                 success: function (entitylist) {
                     foundEntities = entitylist;
@@ -642,12 +642,12 @@
                     }
                 }),
                 beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
                     request.setRequestHeader("Accept", "application/json");
                     request.setRequestHeader("Accept-Language", language);
 
                 },
-                url: baseurl + "entities:fetchdata",
+                url: baseUrl + "entities:fetchdata",
                 processData: false,
                 success: function (entities) {
 
@@ -762,12 +762,12 @@
                 dataType: "json",
                 contentType: 'application/json',
                 beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apikey);
+                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
                     request.setRequestHeader("Accept", "application/json");
                     request.setRequestHeader("Accept-Language", language);
 
                 }, // GET /api/v1.0.0/model/specificationtemplates/{templateId}/fieldtypes
-                url: baseurl + "model/specificationtemplates/" + specificationId + "/fieldtypes",
+                url: baseUrl + "model/specificationtemplates/" + specificationId + "/fieldtypes",
                 processData: false,
                 success: function (specificationFields) {
                     console.log("Success fetching specification fields:");
@@ -1192,12 +1192,12 @@
                             contentType: 'application/json',
                             data: JSON.stringify(entityAndSpecifications.specificationValuesForUpdate),
                             beforeSend: function (request) {
-                                request.setRequestHeader("X-inRiver-APIKey", apikey);
+                                request.setRequestHeader("X-inRiver-APIKey", apiKey);
                                 request.setRequestHeader("Accept", "application/json");
                                 request.setRequestHeader("Accept-Language", language);
 
                             }, // PUT /api/v1.0.0/entities/{entityId}/specificationvalues
-                            url: baseurl + "entities/" + entityAndSpecifications.entityId + "/specificationvalues",
+                            url: baseUrl + "entities/" + entityAndSpecifications.entityId + "/specificationvalues",
                             processData: false,
                             success: function (specificationFields) {
                             },

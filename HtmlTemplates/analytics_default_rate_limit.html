@@ -10,9 +10,9 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.4.0/Chart.min.js"></script> <!-- Chart use local later -->
   <script>
 //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
-var apikey = "4fc2d0c30e6c61585eb79df41201b223";
+var apiKey = "4fc2d0c30e6c61585eb79df41201b223";
 var language = "en";
-var baseurl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
 //ABOVE NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
 const entitiesInInRiverModel = [];
@@ -452,11 +452,11 @@ background:rgba(255,255,255, 0.1); /* White background with 70% opacity */
       $.ajax({
      type: "GET",
      beforeSend: function(request) {
-        request.setRequestHeader("X-inRiver-APIKey", apikey);
+        request.setRequestHeader("X-inRiver-APIKey", apiKey);
         request.setRequestHeader("Accept", "application/json");
         request.setRequestHeader("Accept-Language", language);
      },
-     url: baseurl+"model/entitytypes",
+     url: baseUrl+"model/entitytypes",
      processData: false,
      success: function(entitytypes) {
        console.log(entitytypes);
@@ -490,11 +490,11 @@ background:rgba(255,255,255, 0.1); /* White background with 70% opacity */
          data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"},{ "type": "LastModified","value": date, "operator": "GreaterThan"}
        ]}),
          beforeSend: function(request) {
-            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("X-inRiver-APIKey", apiKey);
             request.setRequestHeader("Accept", "application/json");
             request.setRequestHeader("Accept-Language", language);
          },
-         url: baseurl+"query",
+         url: baseUrl+"query",
          processData: false,
          success: function(entitycounter) {
            //Find the entity and update the counter based on the query.
@@ -520,11 +520,11 @@ background:rgba(255,255,255, 0.1); /* White background with 70% opacity */
          data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"},{ "type": "LastModified","value": date, "operator": "GreaterThan"}
        ]}),
          beforeSend: function(request) {
-            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("X-inRiver-APIKey", apiKey);
             request.setRequestHeader("Accept", "application/json");
             request.setRequestHeader("Accept-Language", language);
          },
-         url: baseurl+"query",
+         url: baseUrl+"query",
          processData: false,
          success: function(entitycounter) {
            //Find the entity and update the counter based on the query.
@@ -550,11 +550,11 @@ background:rgba(255,255,255, 0.1); /* White background with 70% opacity */
          data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"},{ "type": "Created","value": date, "operator": "GreaterThan"}
        ]}),
          beforeSend: function(request) {
-            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("X-inRiver-APIKey", apiKey);
             request.setRequestHeader("Accept", "application/json");
             request.setRequestHeader("Accept-Language", language);
          },
-         url: baseurl+"query",
+         url: baseUrl+"query",
          processData: false,
          success: function(entitycounter) {
            //Find the entity and update the counter based on the query.
@@ -578,11 +578,11 @@ background:rgba(255,255,255, 0.1); /* White background with 70% opacity */
          contentType: 'application/json',
          data: JSON.stringify( {"systemCriteria": [{"type": "EntityTypeId","value": entitytypeId, "operator": "Equal"}]}),
          beforeSend: function(request) {
-            request.setRequestHeader("X-inRiver-APIKey", apikey);
+            request.setRequestHeader("X-inRiver-APIKey", apiKey);
             request.setRequestHeader("Accept", "application/json");
             request.setRequestHeader("Accept-Language", language);
          },
-         url: baseurl+"query",
+         url: baseUrl+"query",
          processData: false,
          success: function(entitycounter) {
            //Find the entity and update the counter based on the query.
