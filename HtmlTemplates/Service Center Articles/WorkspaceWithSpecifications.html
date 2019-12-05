@@ -151,7 +151,7 @@
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
-        var chunkSize = 1000;
+        var chunkSize = 200;
 
         var foundEntities;
         var workAreasArray;
@@ -160,7 +160,6 @@
         var specificationLinkTypes;
         var selectedSpecificationId;
         var specificationLinkTypeIds = "ProductSpecifications,Item2SpecificationCorrect";
-        var allLanguages;
         var showDataType = false;
         var specifications = new Object();
         var specificationMainNameField = 'SpecificationName';
@@ -169,7 +168,6 @@
             fetchAllOutboundSpecificationLinkTypeIds();
             fetchWorkAreas();
             fetchAllCvls();
-            fetchAllLanguages();
 
             hideSpecificationTemplate();
         }
@@ -255,13 +253,6 @@
             });
         }
 
-        function fetchAllLanguages() {
-            $.getJSON(buildAjaxSettings("model/languages"), function(languages) {
-                allLanguages = languages;
-                console.log(allLanguages);
-            });
-        }
-
         function fetchAllOutboundSpecificationLinkTypeIds() {
             specificationLinkTypeIds = "";
             $.getJSON(buildAjaxSettings("model/entitytypes"), function(entityTypes) {
@@ -300,12 +291,12 @@
 
             if (value === "none") return;
 
-            var foundEntities;
+            var entities;
             $.getJSON(buildAjaxSettings("workareafolder/" + value + "/entitylist"), function (entitylist) {
-                foundEntities = entitylist;
+                entities = entitylist;
 
-                console.log("foundEntitiesShort:");
-                console.log(foundEntities);
+                console.log("entities:");
+                console.log(entities);
 
                 var specificationtemplaterowstyle = document.getElementById('specificationtemplaterow').style;
                 specificationtemplaterowstyle.display = 'table-row';
@@ -315,7 +306,9 @@
                 hideSelectFields();
 
                 specifications = new Object();
-                var chunkedFoundEntityIds = chunk(foundEntities.entityIds, chunkSize);
+                var chunkedFoundEntityIds = chunk(entities.entityIds, chunkSize);
+
+                foundEntities = [];
                 console.log('chunkedFoundEntityIds');
                 console.log(chunkedFoundEntityIds);
                 let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
@@ -343,10 +336,11 @@
             return $.post(ajaxSettings,
                 function(entities) {
 
-                    foundEntities = entities;
+                    foundEntities = foundEntities.concat(entities);
 
                     console.log("Success fetching entities");
                     console.log(entities);
+                    console.log(foundEntities);
 
                     for (var i = 0; i < entities.length; i++) {
                         for (var j = 0; j < entities[i].outbound.length; j++) {
@@ -457,7 +451,7 @@
                     }
                 });
 
-                fillInBuggedOutSpecificationFields(specificationFieldsArray);
+                ensureSpecificationFields(specificationFieldsArray);
 
                 var fieldtyperowstyle = document.getElementById('fieldtyperow').style;
                 fieldtyperowstyle.display = 'table-row';
@@ -485,6 +479,7 @@
                     fieldspecificationSelectHtml += '<li><b>' + categoryId + '</b></li>';
                     for (var i = 0; i < specificationFieldsArray.length; i++) {
                         var specificationField = specificationFieldsArray[i];
+                        console.log(specificationField);
                         if (!specificationField.isDisabled || specificationField.format !== null) {
                             var disabled = " ";
                             if (categoryId === specificationField.categoryId) {
@@ -496,7 +491,7 @@
                                 if (i == 0) {
                                     elementId = ' id="focusPoint"';
                                 }
-                                fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '" onclick="fieldTypesSelected(\'' + specificationFieldsArray[i].id + '\')"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
+                                fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '"'  + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
                             }
                         }
                     }
@@ -514,13 +509,12 @@
             } else {
                 $('#fieldtypeselector input[type="checkbox"').prop('checked', false);
             }
-
-            for (var i = 0; i < specificationFieldsArray.length; i++) {
-                fieldTypesSelected(specificationFieldsArray[i].id);
-            }
         }
 
-        function fillInBuggedOutSpecificationFields(specificationFields) {
+        function ensureSpecificationFields(specificationFields) {
+            console.log('ensureSpecificationFields');
+            console.log(specificationFields);
+            console.log(foundEntities);
             specificationFields.forEach(function (specificationField, index) {
                 var foundEntity = foundEntities.find(function (entity) {
                     var specification = findSpecificationById(entity.specification, specificationField.id);
@@ -547,182 +541,6 @@
             });
         }
 
-
-        function fieldTypesSelected(specificationFieldId) {
-            var checkedFieldTypeIds = [];
-            $("#fieldtypeselector input:checked").each(function () {
-                checkedFieldTypeIds.push($(this).val());
-            });
-
-            var specificationtemplaterowstyle = document.getElementById('valueFieldEditTableId').style;
-            specificationtemplaterowstyle.display = 'block';
-
-            var doMassUpdateButtonDivStyle = document.getElementById('doMassUpdateButtonDiv').style;
-            doMassUpdateButtonDivStyle.display = 'block';
-
-            console.log("CheckedFileTypeIds:");
-            console.log(checkedFieldTypeIds);
-            console.log(specificationFieldsArray);
-
-            var selector = '#newValueFieldEdit > #tr_' + specificationFieldId;
-            var newValueFieldEditHtml = "";
-
-            if (checkedFieldTypeIds.find(function (id) {
-                return specificationFieldId === id;
-            }) === undefined) {
-                $(selector).remove();
-            } else if ($(selector).html() !== undefined) {
-                $(selector).html(renderFieldTypeRow(specificationFieldId));
-            } else {
-                newValueFieldEditHtml += '<tr id="tr_' + specificationFieldId + '">';
-                newValueFieldEditHtml += renderFieldTypeRow(specificationFieldId);
-                newValueFieldEditHtml += "</tr>";
-
-                $('#newValueFieldEdit').append(newValueFieldEditHtml);
-            }
-
-            for (var id in checkedFieldTypeIds) {
-                var specificationField = specificationFieldsArray.find(function (specField) {
-                    return specField.id === checkedFieldTypeIds[id];
-                });
-                if (specificationField.dataType === "DateTime") {
-                    $('#' + checkedFieldTypeIds[id]).datetimepicker({ inline: true, sideBySide: true, format: 'YYYY-MM-DDTHH:mm' });
-                }
-            }
-
-            validate();
-            $('#focusPoint').focus();
-        }
-
-        function renderFieldTypeRow(specificationFieldId) {
-            var specificationField = specificationFieldsArray.find(function (specField) {
-                return specField.id === specificationFieldId;
-            });
-
-            var newValueFieldEditHtml = "<td>";
-            if (showDataType) {
-                newValueFieldEditHtml += specificationField.name.en + " (" + specificationField.dataType + ")";
-            } else {
-                newValueFieldEditHtml += specificationField.name.en;
-            }
-            if (specificationField.unit !== null && specificationField.unit.length > 0) {
-                newValueFieldEditHtml += "&nbsp;(" + specificationField.unit + ")";
-            }
-            if (specificationField.isMandatory) {
-                newValueFieldEditHtml += "*";
-            }
-            newValueFieldEditHtml += "</td>";
-
-            newValueFieldEditHtml += "<td>";
-            if (specificationField.dataType === "CVL") {
-                newValueFieldEditHtml += renderCVLHtml(specificationField.cvlId, specificationField.id);
-            } else if (specificationField.dataType === "Boolean") {
-                newValueFieldEditHtml += renderBooleanHtml(specificationField.id);
-            } else if (specificationField.dataType === "LocaleString") {
-                newValueFieldEditHtml += renderLocaleStringHtml(specificationField.id);
-            } else {
-                newValueFieldEditHtml += renderFieldHtml(specificationField.id, specificationField.dataType);
-            }
-            newValueFieldEditHtml += "</td>";
-
-            return newValueFieldEditHtml;
-        }
-
-        function renderCVLHtml(cvlId, specificationFieldTypeId) {
-            var cvl = allCvls.find(function (cvl) {
-                return cvl.id === cvlId;
-            });
-            var specificationField = specificationFieldsArray.find(function (specField) {
-                return specField.id == specificationFieldTypeId;
-            });
-
-            console.log('renderCVLHtml');
-            console.log(specificationField);
-
-            var cvlHtml = '<ul id="' + specificationFieldTypeId + '">';
-            var inputType = "radio";
-            if (specificationField.isMultiValue) {
-                inputType = "checkbox";
-            }
-            cvl.values.forEach(function (item, index) {
-                if (cvl.dataType === "String") {
-                    cvlHtml += '<li><input type="' + inputType + '" value="' + item.key + '" name="' + specificationFieldTypeId + '"/>&nbsp;' + item.value + '</li>';
-                } else {
-                    cvlHtml += '<li><input type="' + inputType + '" value="' + item.key + '" name="' + specificationFieldTypeId + '"/>&nbsp;' + item.value.en + '</li>';
-                }
-            });
-            cvlHtml += "</ul>";
-
-            return cvlHtml;
-        }
-
-        function renderBooleanHtml(specificationFieldTypeId) {
-            var booleanHtml = '<ul id="' + specificationFieldTypeId + '">';
-            booleanHtml += '<li><input type="radio" value="true" name="' + specificationFieldTypeId + '"/>&nbsp;True</li>';
-            booleanHtml += '<li><input type="radio" value="false" name="' + specificationFieldTypeId + '"/>&nbsp;False</li>';
-            booleanHtml += "</html>";
-
-            return booleanHtml;
-        }
-
-        function renderLocaleStringHtml(specificationFieldTypeId) {
-            var localeStringHtml = '<div class="row">';
-            allLanguages.forEach(function (language) {
-                localeStringHtml += '<div class="col-lg-2">';
-                localeStringHtml += language.displayName + ':';
-                localeStringHtml += '</div>';
-                localeStringHtml += '<div class="col-lg-10">';
-                localeStringHtml += '<textarea rows="3" id="' + specificationFieldTypeId + ':' + language.name + '" cols="80"></textarea>';
-                localeStringHtml += '</div>';
-            });
-
-            return localeStringHtml;
-        }
-
-        function renderFieldHtml(specificationFieldTypeId, dataType) {
-            var pattern = "";
-            if (dataType === "Integer") {
-                pattern = "^([+-]?[0-9]*)$";
-            }
-            else if (dataType === "Double") {
-                pattern = "^[-+]?[0-9]*\\.?[0-9]+$";
-            }
-            else if (dataType === "DateTime") {
-                pattern = "\\d{4}-[01]\\d-[0-3]\\dT[0-2]\\d:[0-5]\\d:[0-5]\\d(?:\\.\\d+)?Z?";
-            }
-
-            if (dataType === "DateTime") {
-                return '<input type="text"  id="' + specificationFieldTypeId + '" onkeyup="validate()"/>';
-            }
-            else if (pattern.length > 0) {
-                return '<input type="text" id="' + specificationFieldTypeId + '" pattern="' + pattern + '" onkeyup="validate()"/>';
-            }
-            return '<input type="text" id="' + specificationFieldTypeId + '" onkeyup="validate()"/>';
-        }
-
-        function validate() {
-            var isValid = true;
-            $('input[type=text]').each(function (index, input) {
-                var regExp = $(this).attr('pattern');
-                var value = $(this).val();
-                if (regExp !== undefined && value !== undefined && regExp.length > 0 && value.length > 0) {
-                    if (!value.match(regExp)) {
-                        isValid = false;
-                    }
-                }
-            });
-
-            console.log('validate, isValid = ' + isValid);
-
-            if (!isValid) {
-                console.log('addClass("buttonInvalidForInput")');
-                $('#doMassUpdate').addClass('buttonInvalidForInput');
-            } else {
-                console.log('removeClass("buttonInvalidForInput")');
-                $('#doMassUpdate').removeClass('buttonInvalidForInput');
-            }
-        }
-
         function hideSpecificationTemplate() {
             hideElement('specificationtemplaterow');
             hideSelectFields();
@@ -730,160 +548,13 @@
 
         function hideSelectFields() {
             hideElement('fieldtyperow');
-            hideValueFieldEditTable();
-        }
-
-        function hideValueFieldEditTable() {
-            $('#newValueFieldEdit').html("");
-            hideElement('valueFieldEditTableId');
-            hideElement('doMassUpdateButtonDiv');
         }
 
         function hideElement(elementId) {
             var style = document.getElementById(elementId).style;
             style.display = 'none';
         }
-
-        function doMassUpdate() {
-            var specificationValuesForUpdate = [];
-
-            console.log("selectedSpecificationId: " + selectedSpecificationId);
-
-            var entitiesWithSelectedSpecification = [];
-            foundEntities.forEach(function (entity) {
-                if (entity.outbound.length > 0) {
-                    if (entity.outbound[0].entityId == selectedSpecificationId) {
-                        entitiesWithSelectedSpecification.push(entity);
-                    }
-                }
-            });
-            console.log("EntitiesWithSelectedSpecification:");
-            console.log(entitiesWithSelectedSpecification);
-
-            $("#newValueFieldEdit input:checked").each(function () {
-                var specFieldId = $(this).attr('name');
-                var specificationField = specificationFieldsArray.find(function (specField) {
-                    return specField.id == specFieldId;
-                });
-
-                console.log("specFieldId = " + specFieldId);
-                console.log("specificationField = " + specificationField);
-                console.log(allCvls);
-
-                var specificationValue = new Object();
-                specificationValue.specificationFieldTypeId = specFieldId;
-
-                var newSpecificationValue = true;
-                if (specificationField.dataType === "Boolean") {
-                    specificationValue.value = $(this).val() == "true";
-                }
-                else if (specificationField.dataType === "CVL") {
-                    if (specificationField.isMultiValue) {
-                        var potentialSpecificationValue = specificationValuesForUpdate.find(function (value) {
-                            return value.specificationFieldTypeId == specFieldId;
-                        });
-                        if (potentialSpecificationValue != undefined) {
-                            specificationValue = potentialSpecificationValue;
-                            newSpecificationValue = false;
-                        } else {
-                            specificationValue.value = [];
-                        }
-                        specificationValue.value.push($(this).val());
-                    } else {
-                        specificationValue.value = $(this).val();
-                    }
-                }
-                if (newSpecificationValue) {
-                    specificationValuesForUpdate.push(specificationValue);
-                }
-            });
-
-            $("#newValueFieldEdit input[type=text]").each(function () {
-                var specFieldId = $(this).attr('id');
-                var fieldValue = $(this).val();
-                if (fieldValue.length > 0) {
-                    var specificationField = specificationFieldsArray.find(function (specField) {
-                        return specField.id == specFieldId;
-                    });
-
-                    var specificationValue = new Object();
-                    specificationValue.specificationFieldTypeId = specFieldId;
-                    if (specificationField.dataType === "Integer" || specificationField.dataType === "Double") {
-                        specificationValue.value = Number(fieldValue);
-                    } else {
-                        specificationValue.value = fieldValue;
-                    }
-                    specificationValuesForUpdate.push(specificationValue);
-                }
-            });
-
-            $("#newValueFieldEdit textarea").each(function () {
-                var htmlId = $(this).attr('id').split(':');
-                var specFieldId = htmlId[0];
-                var languageCode = htmlId[1];
-
-                var fieldValue = $(this).val();
-                var currentSpecificationValueForUpdate = specificationValuesForUpdate.find(function (specForUpdate) {
-                    return specForUpdate.specificationFieldTypeId === specFieldId;
-                });
-
-                if (currentSpecificationValueForUpdate === undefined) {
-                    var specificationValue = new Object();
-                    specificationValue.specificationFieldTypeId = specFieldId;
-                    specificationValue.value = new Object();
-                    specificationValue.value[languageCode] = fieldValue;
-                    specificationValuesForUpdate.push(specificationValue);
-                } else {
-                    currentSpecificationValueForUpdate.value[languageCode] = fieldValue;
-                }
-            });
-
-            console.log("SpecificationValuesForUpdate:");
-            console.log(specificationValuesForUpdate);
-
-            var entityUpdateCount = 0;
-            var totalEntities = entitiesWithSelectedSpecification.length;
-
-            document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
-
-            var failedEntityIds = [];
-            entitiesWithSelectedSpecification.forEach(function (entity, index) {
-                throttle.ajax({
-                    type: "PUT",
-                    dataType: "json",
-                    contentType: 'application/json',
-                    data: JSON.stringify(specificationValuesForUpdate),
-                    beforeSend: function (request) {
-                        request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                        request.setRequestHeader("Accept", "application/json");
-                        request.setRequestHeader("Accept-Language", language);
-
-                    }, // PUT /api/v1.0.0/entities/{entityId}/specificationvalues
-                    url: baseUrl + "entities/" + entity.entityId + "/specificationvalues",
-                    processData: false,
-                    success: function (specificationFields) {
-                    }, error: function (xhr) {
-                        failedEntityIds.push(entity.entityId);
-
-                        var failedHtml = "Failed entity id(s): ";
-                        var divider = "";
-                        failedEntityIds.forEach(function (id, index) {
-                            failedHtml += divider + id;
-                            divider = ',';
-                        });
-
-                        document.getElementById("failed").innerHTML = failedHtml;
-                    },
-                    complete: function () {
-                        entityUpdateCount++;
-                        document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
-                    }
-                });
-            });
-        }
-
     </script>
-
 </head>
 <body>
     <div class="container">
