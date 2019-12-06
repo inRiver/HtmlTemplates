@@ -361,6 +361,21 @@
             xlf.addEventListener('change', handleFile, false);
         }
 
+        function buildAjaxSettings(restOperation) {
+            var ajaxSettings = {
+                dataType: "json",
+                contentType: 'application/json',
+                headers: {
+                    'X-inRiver-APIKey': apiKey,
+                    'Accept': 'application/json',
+                    'Accept-Language': language
+                },
+                url: baseUrl + restOperation,
+                processData: true
+            };
+            return ajaxSettings;
+        }
+
         function setCsvDivider() {
             var divider = "";
             var csvDividerSelection = document.getElementsByName("csvDividerSelect");
@@ -393,57 +408,40 @@
         }
 
         function fetchWorkAreas() {
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                contentType: 'application/json',
-                beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                    request.setRequestHeader("Accept", "application/json");
-                    request.setRequestHeader("Accept-Language", language);
+            $.getJSON(buildAjaxSettings("workareafoldertree?includeCreatedByMe=false"), function (workAreaFolderTree) {
+                console.log("Success");
+                console.log(workAreaFolderTree);
+                workAreasArray = workAreaFolderTree;
+                console.log(workAreasArray.length);
 
-                }, // GET /api/v1.0.0/workareafoldertree
-                url: baseUrl + "workareafoldertree?includeCreatedByMe=false",
-                processData: false,
-                success: function (workareas) {
-                    console.log("Success");
-                    console.log(workareas);
-                    console.log(workareas);
-                    workAreasArray = workareas;
-                    console.log(workAreasArray.length);
-                }, error: function (xhr) {
-                    console.log("Error occured.please try again");
-                },
-                complete: function () {
-                    var workareasselectorhtml = '<div id="workareaselector">';
-                    workareasselectorhtml += '<ul>';
-                    workareasselectorhtml += '<li id="topLevel" value="none">Common Shared';
-                    workareasselectorhtml += '<ul>';
-                    for (var i = 0; i < workAreasArray.length; i++) {
-                        if (workAreasArray[i].folders !== undefined) {
-                            workareasselectorhtml += renderWorkareaSubLevels(workAreasArray[i]);
-                        }
-                        else {
-                            workareasselectorhtml += '<li value="' + workAreasArray[i].id + '" >' + workAreasArray[i].name + '</li>';
-                        }
+                var workareasselectorhtml = '<div id="workareaselector">';
+                workareasselectorhtml += '<ul>';
+                workareasselectorhtml += '<li id="topLevel" value="none">Common Shared';
+                workareasselectorhtml += '<ul>';
+                for (var i = 0; i < workAreasArray.length; i++) {
+                    if (workAreasArray[i].folders !== undefined) {
+                        workareasselectorhtml += renderWorkareaSubLevels(workAreasArray[i]);
                     }
-                    workareasselectorhtml += "</li>";
-                    workareasselectorhtml += "</ul>";
-                    workareasselectorhtml += "</ul>";
-                    workareasselectorhtml += "</div>";
-
-                    document.getElementById("workareaselection").innerHTML = workareasselectorhtml;
-
-                    $('#workareaselector').jstree({
-                        'plugins': ["wholerow", "types"]
-                    });
-                    $('#workareaselector').jstree("open_node", $('#topLevel'));
-
-                    $('#workareaselector').on("changed.jstree", function (e, data) {
-                        console.log(data.node.li_attr.value);
-                        fetchSpecifications(data.node.li_attr.value);
-                    });
+                    else {
+                        workareasselectorhtml += '<li value="' + workAreasArray[i].id + '" >' + workAreasArray[i].name + '</li>';
+                    }
                 }
+                workareasselectorhtml += "</li>";
+                workareasselectorhtml += "</ul>";
+                workareasselectorhtml += "</ul>";
+                workareasselectorhtml += "</div>";
+
+                document.getElementById("workareaselection").innerHTML = workareasselectorhtml;
+
+                $('#workareaselector').jstree({
+                    'plugins': ["wholerow", "types"]
+                });
+                $('#workareaselector').jstree("open_node", $('#topLevel'));
+
+                $('#workareaselector').on("changed.jstree", function (e, data) {
+                    console.log(data.node.li_attr.value);
+                    fetchSpecifications(data.node.li_attr.value);
+                });
             });
         }
 
@@ -464,88 +462,35 @@
         }
 
         function fetchAllCvls() {
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                contentType: 'application/json',
-                beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                    request.setRequestHeader("Accept", "application/json");
-                    request.setRequestHeader("Accept-Language", language);
-
-                },
-                url: baseUrl + "model/cvls",
-                processData: false,
-                success: function (cvls) {
-                    cvls.forEach(function (item, index) {
-                        var cvlWithValues = item;
-                        cvlWithValues.values = [];
-                        allCvls.push(cvlWithValues);
-                    });
-                    console.log('allCvls');
-                    console.log(allCvls);
-                },
-                error: function (xhr) {
-                    console.log("Error occured.please try again");
-                }
+            $.getJSON(buildAjaxSettings("model/cvls"), function (cvls) {
+                cvls.forEach(function (item, index) {
+                    var cvlWithValues = item;
+                    cvlWithValues.values = [];
+                    allCvls.push(cvlWithValues);
+                });
+                console.log('allCvls');
+                console.log(allCvls);
             });
         }
 
         function fetchAllLanguages() {
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                contentType: 'application/json',
-                beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                    request.setRequestHeader("Accept", "application/json");
-                    request.setRequestHeader("Accept-Language", language);
-
-                },
-                url: baseUrl + "model/languages",
-                processData: false,
-                success: function (languages) {
-                    allLanguages = languages;
-                    console.log(allLanguages);
-                },
-                error: function (xhr) {
-                    console.log("Error occured.please try again");
-                }
+            $.getJSON(buildAjaxSettings("model/languages"), function (languages) {
+                allLanguages = languages;
+                console.log(allLanguages);
             });
         }
 
         function fetchAllOutboundSpecificationLinkTypeIds() {
             specificationLinkTypeIds = "";
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                contentType: 'application/json',
-                beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                    request.setRequestHeader("Accept", "application/json");
-                    request.setRequestHeader("Accept-Language", language);
+            $.getJSON(buildAjaxSettings("model/entitytypes"), function (entityTypes) {
+                var specification = entityTypes.find(function (entityType) {
+                    return entityType.id === specificationTypeId;
+                });
+                specificationLinkTypeIds = specification.inboundLinkTypes.join(",");
+                console.log(specificationLinkTypeIds);
 
-                }, // GET /api/v1.0.0/model/entitytypes
-                url: baseUrl + "model/entitytypes",
-                processData: false,
-                success: function (entityTypes) {
-                    var specification = entityTypes.find(function (entityType) {
-                        return entityType.id === specificationTypeId;
-                    });
-                    var delimiter = "";
-                    specification.inboundLinkTypes.forEach(function (linkType, index) {
-                        specificationLinkTypeIds += delimiter + linkType;
-                        delimiter = ",";
-                    });
-                    console.log(specificationLinkTypeIds);
-
-                    specificationMainNameField = specification.displayNameFieldTypeId;
-                },
-                error: function (xhr) {
-                    console.log("Error occured.please try again");
-                }
+                specificationMainNameField = specification.displayNameFieldTypeId;
             });
-
         }
 
         function getCvlValues(cvlId) {
@@ -555,24 +500,8 @@
             console.log("Found cvl for cvlId = " + cvlId);
             console.log(cvl);
             if (cvl.values.length === 0) {
-                $.ajax({
-                    type: "GET",
-                    dataType: "json",
-                    contentType: 'application/json',
-                    beforeSend: function (request) {
-                        request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                        request.setRequestHeader("Accept", "application/json");
-                        request.setRequestHeader("Accept-Language", language);
-
-                    },
-                    url: baseUrl + "model/cvls/" + cvlId + "/values",
-                    processData: false,
-                    success: function (cvlValues) {
-                        cvl.values = cvlValues;
-                    },
-                    error: function (xhr) {
-                        console.log("Error occured.please try again");
-                    }
+                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values"), function (cvlValues) {
+                    cvl.values = cvlValues;
                 });
             }
         }
@@ -583,46 +512,30 @@
             if (value === "none") return;
 
             var entities;
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                contentType: 'application/json',
-                beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                    request.setRequestHeader("Accept", "application/json");
-                    request.setRequestHeader("Accept-Language", language);
+            $.getJSON(buildAjaxSettings("workareafolder/" + value + "/entitylist"), function (entitylist) {
+                entities = entitylist;
 
-                },
-                url: baseUrl + "workareafolder/" + value + "/entitylist",
-                processData: false,
-                success: function (entitylist) {
-                    entities = entitylist;
+                console.log("entities:");
+                console.log(entities);
 
-                    console.log("entities:");
-                    console.log(entities);
-                }, error: function (xhr) {
-                    console.log("Error occured.please try again" + xhr);
-                },
-                complete: function () {
-                    var specificationtemplaterowstyle = document.getElementById('specificationtemplaterow').style;
-                    specificationtemplaterowstyle.display = 'table-row';
+                var specificationtemplaterowstyle = document.getElementById('specificationtemplaterow').style;
+                specificationtemplaterowstyle.display = 'table-row';
 
-                    document.getElementById("specificationtemplateselection").innerHTML = '<div class="loader" />';
+                document.getElementById("specificationtemplateselection").innerHTML = '<div class="loader" />';
 
-                    hideSelectFields();
+                hideSelectFields();
 
-                    foundEntities = [];
-                    specifications = new Object();
-                    var chunkedFoundEntityIds = chunk(entities.entityIds, chunkSize);
+                foundEntities = [];
+                specifications = new Object();
+                var chunkedFoundEntityIds = chunk(entities.entityIds, chunkSize);
 
-                    foundEntities = [];
-                    console.log('chunkedFoundEntityIds');
-                    console.log(chunkedFoundEntityIds);
-                    let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
-                    process.done(results => {
-                        fillspecificationnames(specifications);
-                    });
-                }
+                foundEntities = [];
+                console.log('chunkedFoundEntityIds');
+                console.log(chunkedFoundEntityIds);
+                let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
+                process.done(results => {
+                    fillspecificationnames(specifications);
+                });
             });
         }
 
@@ -632,56 +545,40 @@
             );
 
         function getSpecificationNamesForEntityIds(entityIds) {
-            return $.ajax({
-                type: "POST",
-                dataType: "json",
-                contentType: 'application/json',
-                data: JSON.stringify({
-                    "entityIds": entityIds,
-                    "objects": "SpecificationSummary",
-                    "outbound": {
-                        "linkTypeIds": specificationLinkTypeIds,
-                        "objects": "FieldValues"
-                    }
-                }),
-                beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                    request.setRequestHeader("Accept", "application/json");
-                    request.setRequestHeader("Accept-Language", language);
+            var ajaxSettings = buildAjaxSettings("entities:fetchdata");
+            ajaxSettings.data = JSON.stringify({
+                "entityIds": entityIds,
+                "objects": "SpecificationSummary",
+                "outbound": {
+                    "linkTypeIds": specificationLinkTypeIds,
+                    "objects": "FieldValues"
+                }
+            });
 
-                },
-                url: baseUrl + "entities:fetchdata",
-                processData: false,
-                success: function (entities) {
+            return $.post(ajaxSettings, function (entities) {
+                foundEntities = foundEntities.concat(entities);
 
-                    foundEntities = foundEntities.concat(entities);
+                console.log("Success fetching entities");
+                console.log(entities);
 
-                    console.log("Success fetching entities");
-                    console.log(entities);
-
-                    for (var i = 0; i < entities.length; i++) {
-                        for (var j = 0; j < entities[i].outbound.length; j++) {
-                            var specification = entities[i].outbound[j];
-                            if (!(specification.entityId in specifications)) {
-                                var specificationEntry = new Object();
-                                specificationEntry.specificationName = specification.fieldValues.find(field => field.fieldTypeId === 'SpecificationName').value;
-                                specificationEntry.entityCount = 1;
-                                specifications[specification.entityId] = specificationEntry;
-                            } else {
-                                specifications[specification.entityId].entityCount++;
-                            }
+                for (var i = 0; i < entities.length; i++) {
+                    for (var j = 0; j < entities[i].outbound.length; j++) {
+                        var specification = entities[i].outbound[j];
+                        if (!(specification.entityId in specifications)) {
+                            var specificationEntry = new Object();
+                            specificationEntry.specificationName = specification.fieldValues
+                                .find(field => field.fieldTypeId === 'SpecificationName').value;
+                            specificationEntry.entityCount = 1;
+                            specifications[specification.entityId] = specificationEntry;
+                        } else {
+                            specifications[specification.entityId].entityCount++;
                         }
                     }
-
-                    console.log("Specifications:");
-                    console.log(specifications);
-                }, error: function (xhr) {
-                    console.log("Error occured.please try again: " + xhr);
                 }
-            })
-                .done(result => ({}))
-                .fail((_xhr, text) => ({}));
-        }
+
+                console.log("Specifications:");
+                console.log(specifications);
+            });        }
 
         // https://codereview.stackexchange.com/questions/174310/process-array-with-x-parallel-executions
         function forEachParallel(arrayOfChunks, processChunksFunction, threads) {
@@ -760,83 +657,66 @@
             if (specificationId == "none") return;
 
             selectedSpecificationId = specificationId;
-            $.ajax({
-                type: "GET",
-                dataType: "json",
-                contentType: 'application/json',
-                beforeSend: function (request) {
-                    request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                    request.setRequestHeader("Accept", "application/json");
-                    request.setRequestHeader("Accept-Language", language);
+            $.getJSON(buildAjaxSettings("model/specificationtemplates/" + specificationId + "/fieldtypes"), function (specificationFields) {
+                console.log("Success fetching specification fields:");
+                console.log(specificationFields);
 
-                }, // GET /api/v1.0.0/model/specificationtemplates/{templateId}/fieldtypes
-                url: baseUrl + "model/specificationtemplates/" + specificationId + "/fieldtypes",
-                processData: false,
-                success: function (specificationFields) {
-                    console.log("Success fetching specification fields:");
-                    console.log(specificationFields);
+                specificationFieldsArray = specificationFields;
 
-                    specificationFieldsArray = specificationFields;
+                specificationFieldsArray.forEach(function (item, index) {
+                    if (item.dataType === "CVL") {
+                        getCvlValues(item.cvlId);
+                    }
+                });
 
-                    specificationFieldsArray.forEach(function (item, index) {
-                        if (item.dataType === "CVL") {
-                            getCvlValues(item.cvlId);
-                        }
+                ensureSpecificationFields(specificationFieldsArray);
+
+                var fieldtyperowstyle = document.getElementById('fieldtyperow').style;
+                fieldtyperowstyle.display = 'table-row';
+
+                specificationFieldsArray = specificationFieldsArray.sort(function (a, b) {
+                    return a.index, b.index;
+                });
+
+                var categoryIds = [];
+                specificationFieldsArray.forEach(function (field, index) {
+                    var foundCategoryId = categoryIds.find(function (categoryId) {
+                        return field.categoryId === categoryId;
                     });
+                    if (foundCategoryId === undefined || foundCategoryId === null) {
+                        categoryIds.push(field.categoryId);
+                    }
+                });
 
-                    ensureSpecificationFields(specificationFieldsArray);
+                console.log('categoryIds');
+                console.log(categoryIds);
 
-                }, error: function (xhr) {
-                    console.log("Error occured.please try again: " + xhr);
-                },
-                complete: function () {
-                    var fieldtyperowstyle = document.getElementById('fieldtyperow').style;
-                    fieldtyperowstyle.display = 'table-row';
-
-                    specificationFieldsArray = specificationFieldsArray.sort(function (a, b) {
-                        return a.index, b.index;
-                    });
-
-                    var categoryIds = [];
-                    specificationFieldsArray.forEach(function (field, index) {
-                        var foundCategoryId = categoryIds.find(function (categoryId) {
-                            return field.categoryId === categoryId;
-                        });
-                        if (foundCategoryId === undefined || foundCategoryId === null) {
-                            categoryIds.push(field.categoryId);
-                        }
-                    });
-
-                    console.log('categoryIds');
-                    console.log(categoryIds);
-
-                    var fieldspecificationSelectHtml = '<ul><li><input type="checkbox" onclick="checkAllFieldSpecifications()" id="allFieldSpecificationChecker" />&nbsp;Check All</li></ul>';
-                    fieldspecificationSelectHtml += '<ul id="fieldtypeselector">';
-                    categoryIds.forEach(function (categoryId, index) {
-                        fieldspecificationSelectHtml += '<li><b>' + categoryId + '</b></li>';
-                        for (var i = 0; i < specificationFieldsArray.length; i++) {
-                            var specificationField = specificationFieldsArray[i];
-                            if (!specificationField.isDisabled || specificationField.format !== null) {
-                                var disabled = " ";
-                                if (categoryId === specificationField.categoryId) {
-                                    if (specificationField.format !== null) {
-                                        disabled = " disabled ";
-                                    }
-
-                                    var elementId = "";
-                                    if (i == 0) {
-                                        elementId = ' id="focusPoint"';
-                                    }
-                                    fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
+                var fieldspecificationSelectHtml = '<ul><li><input type="checkbox" onclick="checkAllFieldSpecifications()" id="allFieldSpecificationChecker" />&nbsp;Check All</li></ul>';
+                fieldspecificationSelectHtml += '<ul id="fieldtypeselector">';
+                categoryIds.forEach(function (categoryId, index) {
+                    fieldspecificationSelectHtml += '<li><b>' + categoryId + '</b></li>';
+                    for (var i = 0; i < specificationFieldsArray.length; i++) {
+                        var specificationField = specificationFieldsArray[i];
+                        if (!specificationField.isDisabled || specificationField.format !== null) {
+                            var disabled = " ";
+                            if (categoryId === specificationField.categoryId) {
+                                if (specificationField.format !== null) {
+                                    disabled = " disabled ";
                                 }
+
+                                var elementId = "";
+                                if (i == 0) {
+                                    elementId = ' id="focusPoint"';
+                                }
+                                fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
                             }
                         }
-                    });
-                    fieldspecificationSelectHtml += "</ul>";
-                    document.getElementById("fieldtypeselection").innerHTML = fieldspecificationSelectHtml;
+                    }
+                });
+                fieldspecificationSelectHtml += "</ul>";
+                document.getElementById("fieldtypeselection").innerHTML = fieldspecificationSelectHtml;
 
-                    showElement('tabs');
-                }
+                showElement('tabs');
             });
         }
 
@@ -1189,39 +1069,27 @@
                     document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
 
                     entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
-                        throttle.ajax({
-                            type: "PUT",
-                            dataType: "json",
-                            contentType: 'application/json',
-                            data: JSON.stringify(entityAndSpecifications.specificationValuesForUpdate),
-                            beforeSend: function (request) {
-                                request.setRequestHeader("X-inRiver-APIKey", apiKey);
-                                request.setRequestHeader("Accept", "application/json");
-                                request.setRequestHeader("Accept-Language", language);
+                        var ajaxSettings = buildAjaxSettings("entities/" + entityAndSpecifications.entityId + "/specificationvalues");
+                        ajaxSettings.type = "PUT";
+                        ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
+                        ajaxSettings.error = function(xhr) {
+                            failedEntityIds.push(entityAndSpecifications.entityId);
 
-                            }, // PUT /api/v1.0.0/entities/{entityId}/specificationvalues
-                            url: baseUrl + "entities/" + entityAndSpecifications.entityId + "/specificationvalues",
-                            processData: false,
-                            success: function (specificationFields) {
-                            },
-                            error: function (xhr) {
-                                failedEntityIds.push(entityAndSpecifications.entityId);
+                            showElement('importFailureRow');
+                            var failedHtml = "Failed entity id(s): ";
+                            var divider = "";
+                            failedEntityIds.forEach(function(id, index) {
+                                failedHtml += divider + id;
+                                divider = ',';
+                            });
 
-                                showElement('importFailureRow');
-                                var failedHtml = "Failed entity id(s): ";
-                                var divider = "";
-                                failedEntityIds.forEach(function (id, index) {
-                                    failedHtml += divider + id;
-                                    divider = ',';
-                                });
-
-                                document.getElementById("failed").innerHTML = failedHtml;
-                            },
-                            complete: function () {
-                                entityUpdateCount++;
-                                document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
-                            }
-                        });
+                            document.getElementById("failed").innerHTML = failedHtml;
+                        };
+                        ajaxSettings.complete = function () {
+                            entityUpdateCount++;
+                            document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
+                        }
+                        $.ajax(ajaxSettings);
                     });
                 }
             } else {

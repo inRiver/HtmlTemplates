@@ -7,8 +7,6 @@
     <title>Workspace with Specifications</title>
 
     <script src="https://ajax.aspnetcdn.com/ajax/jQuery/jquery-3.4.1.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.2.1/jstree.min.js"></script>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css">
@@ -171,12 +169,7 @@
                 var specification = entityTypes.find(function (entityType) {
                     return entityType.id === specificationTypeId;
                 });
-                var delimiter = "";
-                specification.inboundLinkTypes.forEach(function (linkType, index) {
-                    specificationLinkTypeIds += delimiter + linkType;
-                    delimiter = ",";
-                });
-
+                specificationLinkTypeIds = specification.inboundLinkTypes.join(",");
                 specificationMainNameField = specification.displayNameFieldTypeId;
             });
         }
