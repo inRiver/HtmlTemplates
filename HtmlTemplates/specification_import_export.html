@@ -441,7 +441,7 @@
 
                     $('#workareaselector').on("changed.jstree", function (e, data) {
                         console.log(data.node.li_attr.value);
-                        fetchspecifications(data.node.li_attr.value);
+                        fetchSpecifications(data.node.li_attr.value);
                     });
                 }
             });
@@ -577,7 +577,7 @@
             }
         }
 
-        function fetchspecifications(value) {
+        function fetchSpecifications(value) {
             hideSpecificationTemplate();
 
             if (value === "none") return;

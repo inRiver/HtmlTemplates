@@ -90,7 +90,6 @@
         var foundEntities;
         var workAreasArray;
         var specificationFieldsArray;
-        var allCvls = [];
         var selectedSpecificationId;
         var specificationLinkTypeIds = "ProductSpecifications,Item2SpecificationCorrect";
         var specifications = new Object();
@@ -99,49 +98,44 @@
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
             fetchWorkAreas();
-            fetchAllCvls();
-
             hideSpecificationTemplate();
         }
 
-        var ajaxSettings = {
-            dataType: "json",
-            contentType: 'application/json',
-            headers: {
-                'X-inRiver-APIKey': apiKey,
-                'Accept': 'application/json',
-                'Accept-Language': language
-            },
-            url: baseUrl,
-            processData: true
-        }
-
         function buildAjaxSettings(restOperation) {
-            var settings = Object.assign({}, ajaxSettings);
-            settings.url = settings.url + restOperation;
-            return settings;
+            var ajaxSettings = {
+                dataType: "json",
+                contentType: 'application/json',
+                headers: {
+                    'X-inRiver-APIKey': apiKey,
+                    'Accept': 'application/json',
+                    'Accept-Language': language
+                },
+                url: baseUrl + restOperation,
+                processData: true
+            };
+            return ajaxSettings;
         }
 
         function fetchWorkAreas() {
             $.getJSON(buildAjaxSettings("workareafoldertree?includeCreatedByMe=false"), function(result) {
                 workAreasArray = result;
 
-                var workareasselectorhtml = '<div id="workareaselector">';
-                workareasselectorhtml += '<ul>';
-                workareasselectorhtml += '<li id="topLevel" value="none">Common Shared';
-                workareasselectorhtml += '<ul>';
+                var workAreasSelectorHtml = '<div id="workareaselector">';
+                workAreasSelectorHtml += '<ul>';
+                workAreasSelectorHtml += '<li id="topLevel" value="none">Common Shared';
+                workAreasSelectorHtml += '<ul>';
                 for (var i = 0; i < workAreasArray.length; i++) {
                     if (workAreasArray[i].folders !== undefined) {
-                        workareasselectorhtml += renderWorkareaSubLevels(workAreasArray[i]);
+                        workAreasSelectorHtml += renderWorkareaSubLevels(workAreasArray[i]);
                     }
                     else {
-                        workareasselectorhtml += '<li value="' + workAreasArray[i].id + '" >' + workAreasArray[i].name + '</li>';
+                        workAreasSelectorHtml += '<li value="' + workAreasArray[i].id + '" >' + workAreasArray[i].name + '</li>';
                     }
                 }
-                workareasselectorhtml += "</ul>";
-                workareasselectorhtml += "</div>";
+                workAreasSelectorHtml += "</ul>";
+                workAreasSelectorHtml += "</div>";
 
-                document.getElementById("workareaselection").innerHTML = workareasselectorhtml;
+                document.getElementById("workareaselection").innerHTML = workAreasSelectorHtml;
 
                 $('#workareaselector').jstree({
                     'plugins': ["wholerow", "types"]
@@ -149,36 +143,26 @@
                 $('#workareaselector').jstree("open_node", $('#topLevel'));
 
                 $('#workareaselector').on("changed.jstree", function (e, data) {
-                    fetchspecifications(data.node.li_attr.value);
+                    fetchSpecifications(data.node.li_attr.value);
                 });
 
             });
         }
 
         function renderWorkareaSubLevels(workarea) {
-            var workareasselectorhtml = '<li value="' + workarea.id + '">' + workarea.name;
-            workareasselectorhtml += '<ul>';
+            var workAreasSelectorHtml = '<li value="' + workarea.id + '">' + workarea.name;
+            workAreasSelectorHtml += '<ul>';
             for (var j = 0; j < workarea.folders.length; j++) {
                 if (workarea.folders[j].folders !== undefined) {
-                    workareasselectorhtml += renderWorkareaSubLevels(workarea.folders[j]);
+                    workAreasSelectorHtml += renderWorkareaSubLevels(workarea.folders[j]);
                 } else {
-                    workareasselectorhtml += '<li value="' + workarea.folders[j].id + '" >' + workarea.folders[j].name + '</li>';
+                    workAreasSelectorHtml += '<li value="' + workarea.folders[j].id + '" >' + workarea.folders[j].name + '</li>';
                 }
             }
-            workareasselectorhtml += "</ul>";
-            workareasselectorhtml += "</li>";
+            workAreasSelectorHtml += "</ul>";
+            workAreasSelectorHtml += "</li>";
 
-            return workareasselectorhtml;
-        }
-
-        function fetchAllCvls() {
-            $.getJSON(buildAjaxSettings("model/cvls"), function(cvls) {
-                cvls.forEach(function (item, index) {
-                    var cvlWithValues = item;
-                    cvlWithValues.values = [];
-                    allCvls.push(cvlWithValues);
-                });
-            });
+            return workAreasSelectorHtml;
         }
 
         function fetchAllOutboundSpecificationLinkTypeIds() {
@@ -197,18 +181,7 @@
             });
         }
 
-        function getCvlValues(cvlId) {
-            var cvl = allCvls.find(function (cvl) {
-                return cvl.id === cvlId;
-            });
-            if (cvl.values.length === 0) {
-                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values"), function (cvlValues) {
-                    cvl.values = cvlValues;
-                });
-            }
-        }
-
-        function fetchspecifications(value) {
+        function fetchSpecifications(value) {
             hideSpecificationTemplate();
 
             if (value === "none") return;
@@ -347,12 +320,6 @@
             selectedSpecificationId = specificationId;
             $.getJSON(buildAjaxSettings("model/specificationtemplates/" + specificationId + "/fieldtypes"), function (specificationFields) {
                 specificationFieldsArray = specificationFields;
-
-                specificationFieldsArray.forEach(function (item, index) {
-                    if (item.dataType === "CVL") {
-                        getCvlValues(item.cvlId);
-                    }
-                });
 
                 ensureSpecificationFields(specificationFieldsArray);
 
