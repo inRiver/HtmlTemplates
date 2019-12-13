@@ -295,7 +295,7 @@
 
     <script type="text/javascript">
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
-        var apiKey = "391a8bdc903bafb080a12ff756edf0b7";
+        var apiKey = "145a024134fc97d14777edf0323c244f";
         var language = "en";
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
@@ -323,17 +323,17 @@
                     return entity.entityId;
                 }
             },
-            {
-                columnName: "SKUNumber", exportOperation: function (entity) {
-                    var skuNumberField = entity.fields.find(function(field) {
-                        return field.fieldTypeId === "SKUSKUNumber";
-                    });
-                    if (skuNumberField !== undefined) {
-                        return skuNumberField.displayValue;
-                    }
-                    return "";
-                }
-            },
+            //{
+            //    columnName: "SKUNumber", exportOperation: function (entity) {
+            //        var skuNumberField = entity.fields.find(function(field) {
+            //            return field.fieldTypeId === "SKUSKUNumber";
+            //        });
+            //        if (skuNumberField !== undefined) {
+            //            return skuNumberField.displayValue;
+            //        }
+            //        return "";
+            //    }
+            //},
             {
                 columnName: specificationMainNameField, exportOperation: function (entity) {
                     return specifications[selectedSpecificationId].specificationName;
