@@ -335,7 +335,7 @@
 
     <script type="text/javascript">
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
-        var apiKey = "391a8bdc903bafb080a12ff756edf0b7";
+        var apiKey = "145a024134fc97d14777edf0323c244f";
         var language = "en";
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
@@ -675,7 +675,7 @@
                                 if (i == 0) {
                                     elementId = ' id="focusPoint"';
                                 }
-                                fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '" onclick="fieldTypesSelected(\'' + specificationFieldsArray[i].id + '\')"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
+                                fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '" onclick="fieldTypesSelected(\'' + specificationFieldsArray[i].id + '\')"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name[language] + '</li>';
                             }
                         }
                     }
