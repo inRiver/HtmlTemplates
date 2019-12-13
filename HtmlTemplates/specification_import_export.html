@@ -315,6 +315,7 @@
         var csvDivider;
         var cvlSeparator;
         var specificationMainNameField = 'SpecificationName';
+        var specificationNameColumnIndex;
 
         var predefinedColumns = [
             {
@@ -323,7 +324,18 @@
                 }
             },
             {
-                columnName: "SpecificationName", exportOperation: function (entity) {
+                columnName: "SKUNumber", exportOperation: function (entity) {
+                    var skuNumberField = entity.fields.find(function(field) {
+                        return field.fieldTypeId === "SKUSKUNumber";
+                    });
+                    if (skuNumberField !== undefined) {
+                        return skuNumberField.displayValue;
+                    }
+                    return "";
+                }
+            },
+            {
+                columnName: specificationMainNameField, exportOperation: function (entity) {
                     return specifications[selectedSpecificationId].specificationName;
                 }
             }
@@ -359,6 +371,14 @@
             if (!xlf.addEventListener) return;
             function handleFile(e) { doImport(e.target.files); }
             xlf.addEventListener('change', handleFile, false);
+
+            specificationNameColumnIndex = undefined;
+            predefinedColumns.forEach(function(column, index) {
+                if (column.columnName === specificationMainNameField) {
+                    specificationNameColumnIndex = index;
+                }
+            });
+            console.log('specificationNameColumnIndex: ' + specificationNameColumnIndex);
         }
 
         function buildAjaxSettings(restOperation) {
@@ -548,7 +568,7 @@
             var ajaxSettings = buildAjaxSettings("entities:fetchdata");
             ajaxSettings.data = JSON.stringify({
                 "entityIds": entityIds,
-                "objects": "SpecificationSummary",
+                "objects": "FieldsSummary,SpecificationSummary",
                 "outbound": {
                     "linkTypeIds": specificationLinkTypeIds,
                     "objects": "FieldValues"
@@ -567,7 +587,7 @@
                         if (!(specification.entityId in specifications)) {
                             var specificationEntry = new Object();
                             specificationEntry.specificationName = specification.fieldValues
-                                .find(field => field.fieldTypeId === 'SpecificationName').value;
+                                .find(field => field.fieldTypeId === specificationMainNameField).value;
                             specificationEntry.entityCount = 1;
                             specifications[specification.entityId] = specificationEntry;
                         } else {
@@ -708,7 +728,7 @@
                                 if (i == 0) {
                                     elementId = ' id="focusPoint"';
                                 }
-                                fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name.en + '</li>';
+                                fieldspecificationSelectHtml += '<li><input type="checkbox"' + elementId + ' value="' + specificationFieldsArray[i].id + '"' + disabled + '/>&nbsp;' + specificationFieldsArray[i].name[language] + '</li>';
                             }
                         }
                     }
@@ -1027,8 +1047,8 @@
                         var specificationName = specifications[selectedSpecificationId].specificationName;
                         if (entity !== undefined) {
                             var validationFailureListItems = "";
-                            if (specificationName !== line[1]) {
-                                validationFailureListItems += '<li>The SpecificationName column value <b>' + line[1] + '</b> does not match selected specification <b>' + specificationName + '</b></li>';
+                            if (specificationName !== line[specificationNameColumnIndex]) {
+                                validationFailureListItems += '<li>The ' + specificationMainNameField + ' column value <b>' + line[specificationNameColumnIndex] + '</b> does not match selected specification <b>' + specificationName + '</b></li>';
                             }
 
                             var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
@@ -1134,7 +1154,7 @@
 
             var localeStringFields = new Object();
             var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: [] };
-            var valuePartLine = line.slice(2);
+            var valuePartLine = line.slice(predefinedColumns.length);
 
             console.log(valuePartLine);
 
