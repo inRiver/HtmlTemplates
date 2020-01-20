@@ -13,6 +13,7 @@
         var fieldPropertyNames;
         var entity;
 
+
         window.onload = function () {
             entity = data[0];
 
@@ -117,7 +118,7 @@
             border-collapse: collapse;
         }
     </style>
-    
+
     <script type="foo/bar" id="allFieldsByCategoryTemplate">
         <div id="tabs">
             <ul>
@@ -153,7 +154,7 @@
                             <%= field.value %>
                         </td>
                         <td>
-                            <span inriver-field-editor="<%= field.fieldName %>"></span>
+                            <span inriver-entity-id="<%= entity.id %>" inriver-field-editor="<%= field.fieldName %>"></span>
                         </td>
                     </tr>
                     <% }); %>
@@ -162,7 +163,7 @@
             <% }); %>
         </div>
     </script>
-    
+
     <script type="foo/bar" id="subEntitiesTemplate">
         <table>
             <%
@@ -174,6 +175,9 @@
                 </td>
                 <td>
                     <%= subEntity.displayDescription %>
+                </td>
+                <td>
+                    <%= subEntity.type %>
                 </td>
                 <td>
                     <img style='max-width: 64px; float:right;border-style:solid;border-width:10px;border-color:white;' src='<%= subEntity.displayPicture %>' />
