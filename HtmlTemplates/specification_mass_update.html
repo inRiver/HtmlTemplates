@@ -335,7 +335,9 @@
 
     <script type="text/javascript">
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
-        var apiKey = "145a024134fc97d14777edf0323c244f";
+        var fallbackApiKey = "145a024134fc97d14777edf0323c244f";
+        var apiKey = fallbackApiKey;
+        var apiKeyUserCVL = "ApiKeyUser";
         var language = "en";
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
@@ -356,29 +358,57 @@
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
-            fetchWorkAreas();
+
             fetchAllCvls();
+            setApiKeyToMatchUser();
+
+            fetchWorkAreas();
             fetchAllLanguages();
             hideSpecificationTemplate();
         }
 
-        function buildAjaxSettings(restOperation) {
+        function hasTemplateContext() {
+            return typeof templateContext !== "undefined";
+        }
+
+        function setApiKeyToMatchUser() {
+            if (hasTemplateContext()) {
+                getCvlValues(apiKeyUserCVL);
+
+                var cvlForApiKeyUser = allCvls.find(function(cvl) {
+                    return cvl.id === apiKeyUserCVL;
+                });
+                if (cvlForApiKeyUser !== undefined && cvlForApiKeyUser !== null) {
+                    console.log(cvlForApiKeyUser.values);
+                    var apiKeyUser = cvlForApiKeyUser.values.find(function(keyValue) {
+                        return keyValue.value === templateContext.userEmail;
+                    });
+                    if (apiKeyUser !== undefined && apiKeyUser !== null) {
+                        apiKey = apiKeyUser.key;
+                        console.log("Found user with userEmail = " + templateContext.userEmail);
+                    };
+                }
+            }
+        }
+
+        function buildAjaxSettings(restOperation, asyncOperation = true) {
             var ajaxSettings = {
                 dataType: "json",
                 contentType: 'application/json',
                 headers: {
-                    'X-inRiver-APIKey': apiKey,
+                    'X-inRiver-APIKey': fallbackApiKey,
                     'Accept': 'application/json',
                     'Accept-Language': language
                 },
                 url: baseUrl + restOperation,
-                processData: true
+                processData: true,
+                async: asyncOperation
             };
             return ajaxSettings;
         }
 
         function fetchWorkAreas() {
-            $.getJSON(buildAjaxSettings("workareafoldertree?includeCreatedByMe=false"), function(workAreaFolderTree) {
+            $.getJSON(buildAjaxSettings("workareafoldertree?includeCreatedByMe=true"), function(workAreaFolderTree) {
                 console.log("Success");
                 console.log(workAreaFolderTree);
                 workAreasArray = workAreaFolderTree;
@@ -386,16 +416,8 @@
 
                 var workareasselectorhtml = '<div id="workareaselector">';
                 workareasselectorhtml += '<ul>';
-                workareasselectorhtml += '<li id="topLevel" value="none">Common Shared';
-                workareasselectorhtml += '<ul>';
-                for (var i = 0; i < workAreasArray.length; i++) {
-                    if (workAreasArray[i].folders !== undefined) {
-                        workareasselectorhtml += renderWorkareaSubLevels(workAreasArray[i]);
-                    }
-                    else {
-                        workareasselectorhtml += '<li value="' + workAreasArray[i].id + '" >' + workAreasArray[i].name + '</li>';
-                    }
-                }
+                workareasselectorhtml += renderTree("p_", hasTemplateContext() ? templateContext.userDisplayName : "Private", "topLevelPrivate");
+                workareasselectorhtml += renderTree("s_", "Common Shared", "topLevelCommonShared");
                 workareasselectorhtml += "</ul>";
                 workareasselectorhtml += "</div>";
 
@@ -404,13 +426,33 @@
                 $('#workareaselector').jstree({
                     'plugins': ["wholerow", "types"]
                 });
-                $('#workareaselector').jstree("open_node", $('#topLevel'));
+                $('#workareaselector').jstree("open_node", $('#topLevelPrivate'));
+                $('#workareaselector').jstree("open_node", $('#topLevelCommonShared'));
 
                 $('#workareaselector').on("changed.jstree", function (e, data) {
                     console.log(data.node.li_attr.value);
                     fetchSpecifications(data.node.li_attr.value);
                 });
             });
+        }
+
+        function renderTree(prefix, rootNodeName, topLevelId) {
+            var html = '<li id="' + topLevelId + '" value="none">' + rootNodeName;
+            html += '<ul>';
+            for (var i = 0; i < workAreasArray.length; i++) {
+                if (workAreasArray[i].id.startsWith(prefix)) {
+                    if (workAreasArray[i].folders !== undefined) {
+                        html += renderWorkareaSubLevels(workAreasArray[i]);
+                    }
+                    else {
+                        html += '<li value="' + workAreasArray[i].id + '" >' + workAreasArray[i].name + '</li>';
+                    }
+                }
+            }
+            html += "</li>";
+            html += "</ul>";
+
+            return html;
         }
 
         function renderWorkareaSubLevels(workarea) {
