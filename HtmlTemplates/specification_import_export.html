@@ -361,11 +361,12 @@
         };
 
         window.onload = function () {
+            fetchAllOutboundSpecificationLinkTypeIds();
+
             fetchAllCvls();
             setApiKeyToMatchUser();
 
             fetchWorkAreas();
-            fetchAllOutboundSpecificationLinkTypeIds();
             fetchAllLanguages();
             hideSpecificationTemplate();
 
@@ -385,8 +386,12 @@
             console.log('specificationNameColumnIndex: ' + specificationNameColumnIndex);
         }
 
+        function hasTemplateContext() {
+            return typeof templateContext !== "undefined";
+        }
+
         function setApiKeyToMatchUser() {
-            if (typeof templateContext !== "undefined") {
+            if (hasTemplateContext()) {
                 getCvlValues(apiKeyUserCVL);
 
                 var cvlForApiKeyUser = allCvls.find(function(cvl) {
@@ -461,7 +466,7 @@
 
                 var workareasselectorhtml = '<div id="workareaselector">';
                 workareasselectorhtml += '<ul>';
-                workareasselectorhtml += renderTree("p_", typeof templateContext !== "undefined" ? templateContext.userDisplayName : "Private", "topLevelPrivate");
+                workareasselectorhtml += renderTree("p_", hasTemplateContext() ? templateContext.userDisplayName : "Private", "topLevelPrivate");
                 workareasselectorhtml += renderTree("s_", "Common Shared", "topLevelCommonShared");
                 workareasselectorhtml += "</ul>";
                 workareasselectorhtml += "</div>";
