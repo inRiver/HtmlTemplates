@@ -342,7 +342,7 @@
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
-        var chunkSize = 1000;
+        var specificationTemplateChunkSize = 100;
 
         var foundEntities;
         var workAreasArray;
@@ -537,15 +537,19 @@
 
 
                 specifications = new Object();
-                var chunkedFoundEntityIds = chunk(entities.entityIds, chunkSize);
+                var chunkedFoundEntityIds = chunk(entities.entityIds, specificationTemplateChunkSize);
 
                 foundEntities = [];
                 console.log('chunkedFoundEntityIds');
                 console.log(chunkedFoundEntityIds);
-                let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
-                process.done(results => {
-                    fillspecificationnames(specifications);
-                });
+
+                var specificationnamesselectorhtml = '<select id="specificationnameselector" onchange="displayspecificationfields(this.value)">';
+                specificationnamesselectorhtml += '<option value="none">-</option>';
+                specificationnamesselectorhtml += "</select>";
+                document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
+
+
+                forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
             });
         }
 
@@ -585,8 +589,7 @@
                         }
                     }
 
-                    console.log("Specifications:");
-                    console.log(specifications);
+                    fillSpecificationNames(specifications);
             });
         }
 
@@ -648,17 +651,20 @@
             return masterDeferred.promise();
         }
 
-        function fillspecificationnames(specifications) {
-            console.log('fillspecificationnames() called');
+        function fillSpecificationNames(specifications) {
+            var specificationsClone = JSON.parse(JSON.stringify(specifications));
+            $("#specificationnameselector > option").each(function () {
+                var key = $(this).attr("value");
+                if (key !== "none") {
+                    var specification = specifications[key];
+                    $(this).text(specifications[key].specificationName + " (" + specifications[key].entityCount + ")");
+                    delete specificationsClone[key];
+                }
+            });
 
-            var specificationnamesselectorhtml = '<select id="specificationnameselector" onchange="displayspecificationfields(this.value)">';
-            specificationnamesselectorhtml += '<option value="none">-</option>';
-            for (var key in specifications) {
-                specificationnamesselectorhtml += '<option value="' + key + '">' + specifications[key].specificationName + " (" + specifications[key].entityCount + ")" + '</option>';
+            for (var key in specificationsClone) {
+                $("#specificationnameselector").append('<option value="' + key + '">' + specifications[key].specificationName + " (" + specifications[key].entityCount + ")" + '</option>');
             }
-            specificationnamesselectorhtml += "</select>";
-
-            document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
         }
 
         function displayspecificationfields(specificationId) {
