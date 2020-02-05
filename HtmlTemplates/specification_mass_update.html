@@ -472,7 +472,7 @@
         }
 
         function fetchAllCvls() {
-            $.getJSON(buildAjaxSettings("model/cvls"), function(cvls) {
+            $.getJSON(buildAjaxSettings("model/cvls", false), function(cvls) {
                 cvls.forEach(function (item, index) {
                     var cvlWithValues = item;
                     cvlWithValues.values = [];
