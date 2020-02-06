@@ -302,7 +302,7 @@
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
-        var specificationTemplateChunkSize = 100;
+        var specificationTemplateChunkSize = 500;
 
         var foundEntities;
         var workAreasArray;
@@ -1075,9 +1075,51 @@
             console.log("EntitiesWithSelectedSpecification:");
             console.log(entitiesWithSelectedSpecification);
 
+            var validationResult = validateContents(entitiesWithSelectedSpecification, lines);
+            if (validationResult.valid) {
+                var failedEntityIds = [];
+
+                var entityUpdateCount = 0;
+                var totalEntities = validationResult.entitiesAndSpecificationsToUpdate.length;
+
+                document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
+
+                validationResult.entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
+                    var ajaxSettings = buildAjaxSettings("entities/" + entityAndSpecifications.entityId + "/specificationvalues");
+                    ajaxSettings.type = "PUT";
+                    ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
+                    ajaxSettings.error = function(xhr) {
+                        failedEntityIds.push(entityAndSpecifications.entityId);
+
+                        showElement('importFailureRow');
+                        var failedHtml = "Failed entity id(s): ";
+                        var divider = "";
+                        failedEntityIds.forEach(function(id, index) {
+                            failedHtml += divider + id;
+                            divider = ',';
+                        });
+
+                        document.getElementById("failed").innerHTML = failedHtml;
+                    };
+                    ajaxSettings.complete = function () {
+                        entityUpdateCount++;
+                        document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
+                    }
+                    $.ajax(ajaxSettings);
+                });
+            } else {
+                showElement('importFailureRow');
+                document.getElementById("validationFailures").innerHTML = validationResult.validationFailureHtml;
+            }
+        }
+
+        function validateContents(entitiesWithSelectedSpecification, lines) {
+            var result = {
+                valid: true,
+                validationFailureHtml: "",
+                entitiesAndSpecificationsToUpdate: []
+            };
             var headerVerification = verifyHeader(lines[0]);
-            var entitiesAndSpecificationsToUpdate = [];
-            var validationFailureHtml = "";
             if (headerVerification.message.length == 0) {
                 var skipHeader = true;
                 lines.forEach(function (line, index) {
@@ -1098,7 +1140,7 @@
                             }
 
                             var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
-                            entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
+                            result.entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
                             if (entityAndSpecificationToUpdate.validationFailures.length > 0) {
                                 validationFailureListItems += _.map(entityAndSpecificationToUpdate.validationFailures,
                                     function (failure) {
@@ -1107,11 +1149,11 @@
                             }
 
                             if (validationFailureListItems.length > 0) {
-                                validationFailureHtml += '<li>Entity ' + entityId;
-                                validationFailureHtml += '<ul>';
-                                validationFailureHtml += validationFailureListItems;
-                                validationFailureHtml += '</ul>';
-                                validationFailureHtml += '</li>';
+                                result.validationFailureHtml += '<li>Entity ' + entityId;
+                                result.validationFailureHtml += '<ul>';
+                                result.validationFailureHtml += validationFailureListItems;
+                                result.validationFailureHtml += '</ul>';
+                                result.validationFailureHtml += '</li>';
                             }
                         }
                     } else {
@@ -1120,47 +1162,13 @@
                 });
 
                 console.log('entitiesAndSpecificationsToUpdate');
-                console.log(entitiesAndSpecificationsToUpdate);
-                console.log(validationFailureHtml);
-
-                if (validationFailureHtml.length > 0) {
-                    showElement('importFailureRow');
-                    document.getElementById("validationFailures").innerHTML = validationFailureHtml;
-                } else {
-                    var failedEntityIds = [];
-
-                    var entityUpdateCount = 0;
-                    var totalEntities = entitiesAndSpecificationsToUpdate.length;
-
-                    document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
-
-                    entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
-                        var ajaxSettings = buildAjaxSettings("entities/" + entityAndSpecifications.entityId + "/specificationvalues");
-                        ajaxSettings.type = "PUT";
-                        ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
-                        ajaxSettings.error = function(xhr) {
-                            failedEntityIds.push(entityAndSpecifications.entityId);
-
-                            showElement('importFailureRow');
-                            var failedHtml = "Failed entity id(s): ";
-                            var divider = "";
-                            failedEntityIds.forEach(function(id, index) {
-                                failedHtml += divider + id;
-                                divider = ',';
-                            });
-
-                            document.getElementById("failed").innerHTML = failedHtml;
-                        };
-                        ajaxSettings.complete = function () {
-                            entityUpdateCount++;
-                            document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
-                        }
-                        $.ajax(ajaxSettings);
-                    });
-                }
+                console.log(result.entitiesAndSpecificationsToUpdate);
+                console.log(result.validationFailureHtml);
             } else {
-                alert('Imported file does not have a correct header. ' + headerVerification.message);
+                result.validationFailureHtml += 'Imported file does not have a correct header. ' + headerVerification.message;
             }
+            result.valid = result.validationFailureHtml.length === 0;
+            return result;
         }
 
         function errorHandler(evt) {
@@ -1342,6 +1350,11 @@
                         <div class="row">
                             <input type="file" id="doImport" accept=".csv,.xlsx" />
                         </div>
+                        <div class="row">
+                            <br/>
+                            Clear empty values:&nbsp;&nbsp;
+                            <input type="checkbox" id="clearEmptyValues"/>
+                        </div>
                     </div>
                     <div class="col-lg-8">
                         <div class="row">
@@ -1362,7 +1375,7 @@
                 <div class="row" id="importFailureRow">
                     <br />
                     <br />
-                    <p class="failed" id="failed">Import failed. The following columns are not valid.</p>
+                    <p class="failed" id="failed">Import failed:</p>
                     <ul id="validationFailures"></ul>
                 </div>
             </div>
