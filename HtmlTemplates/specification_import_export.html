@@ -1203,6 +1203,10 @@
         }
 
         function generateSpecificationValue(entityId, specifications, line) {
+            var checkAllCheckbox = document.getElementById('clearEmptyValues');
+            var clearEmptyValues = checkAllCheckbox.checked;
+            console.log("Clear empty values: " + clearEmptyValues);
+
             console.log("generateSpecificationValue:");
             console.log(specifications);
 
@@ -1219,6 +1223,14 @@
                 specificationValue = new Object();
                 specificationValue.specificationFieldTypeId = specifications[i].specificationField.id;
 
+                if (valuePartLine[i].length === 0) {
+                    console.log("LinePart value is empty: clearEmptyValue = " + clearEmptyValues);
+                    if (clearEmptyValues) {
+                        specificationValue.value = null;
+                        result.specificationValuesForUpdate.push(specificationValue);
+                    }
+                    continue;
+                }
                 if (specifications[i].specificationField.dataType === "CVL") {
                     var cvlKeysToValidate = [];
                     if (specifications[i].specificationField.isMultiValue) {
@@ -1230,7 +1242,7 @@
                     }
                     var potentialErrorString = validateCvlKeys(cvlKeysToValidate, specifications[i].specificationField.cvlId);
                     if (potentialErrorString.length > 0) {
-                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> has invalid values: <b>" + potentialErrorString + "</b>");
+                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> has invalid values: <b>'" + potentialErrorString + "'</b>");
                     }
                 } else if (specifications[i].specificationField.dataType === "LocaleString") {
                     if (localeStringFields[specifications[i].specificationField.id] === undefined) {
@@ -1251,7 +1263,7 @@
                 if (validationFunction !== undefined) {
                     if (!validationFunction(specificationValue.value)) {
                         var formatHint = specifications[i].specificationField.dataType === "DateTime" ? ". Format must follow ISO 8601 i.e. 'YYYY-MM-DDTHH:MM:SS.sZ'" : "";
-                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> with value <b>" + valuePartLine[i] + "</b> is not valid" + formatHint);
+                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> with value <b>'" + valuePartLine[i] + "'</b> is not valid" + formatHint);
                     }
                 }
 
@@ -1270,6 +1282,9 @@
                 result.specificationValuesForUpdate.push(specificationValue);
                 console.log(specificationValue);
             };
+
+            console.log("generateSpecificationValue: result = ");
+            console.log(result);
 
             return result;
         }
