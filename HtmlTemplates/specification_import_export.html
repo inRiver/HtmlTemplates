@@ -359,6 +359,15 @@
                 return exp;
             }
         };
+        var validationAdditionalEntityInformation = function (entity) {
+                    var skuNumberField = entity.fields.find(function(field) {
+                        return field.fieldTypeId === "SKUSKUNumber";
+                    });
+                    if (skuNumberField !== undefined) {
+                        return ": SKUNumber = " + skuNumberField.displayValue;
+                    }
+                    return "";
+                };
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -1149,7 +1158,7 @@
                             }
 
                             if (validationFailureListItems.length > 0) {
-                                result.validationFailureHtml += '<li>Entity ' + entityId;
+                                result.validationFailureHtml += '<li>Entity ' + entityId + validationAdditionalEntityInformation(entity);
                                 result.validationFailureHtml += '<ul>';
                                 result.validationFailureHtml += validationFailureListItems;
                                 result.validationFailureHtml += '</ul>';
