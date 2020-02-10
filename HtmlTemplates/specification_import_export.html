@@ -401,7 +401,7 @@
 
         function setApiKeyToMatchUser() {
             if (hasTemplateContext()) {
-                getCvlValues(apiKeyUserCVL);
+                getCvlValues(apiKeyUserCVL, false);
 
                 var cvlForApiKeyUser = allCvls.find(function(cvl) {
                     return cvl.id === apiKeyUserCVL;
@@ -562,14 +562,14 @@
             });
         }
 
-        function getCvlValues(cvlId) {
+        function getCvlValues(cvlId, asyncOperation) {
             var cvl = allCvls.find(function (cvl) {
                 return cvl.id === cvlId;
             });
             console.log("Found cvl for cvlId = " + cvlId);
             console.log(cvl);
             if (cvl.values.length === 0) {
-                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", false), function (cvlValues) {
+                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
                     cvl.values = cvlValues;
                 });
             }
@@ -740,7 +740,7 @@
 
                 specificationFieldsArray.forEach(function (item, index) {
                     if (item.dataType === "CVL") {
-                        getCvlValues(item.cvlId);
+                        getCvlValues(item.cvlId, true);
                     }
                 });
 
