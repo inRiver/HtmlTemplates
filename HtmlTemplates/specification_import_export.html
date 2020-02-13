@@ -302,7 +302,7 @@
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
-        var specificationTemplateChunkSize = 500;
+        var specificationTemplateChunkSize = 200;
 
         var foundEntities;
         var workAreasArray;
@@ -321,23 +321,40 @@
 
         var predefinedColumns = [
             {
-                columnName: "EntityId", exportOperation: function (entity) {
+                columnName: function(entity) {
+                    return "EntityId";
+                },
+                exportOperation: function (entity) {
                     return entity.entityId;
                 }
             },
-            //{
-            //    columnName: "SKUNumber", exportOperation: function (entity) {
-            //        var skuNumberField = entity.fields.find(function(field) {
-            //            return field.fieldTypeId === "SKUSKUNumber";
-            //        });
-            //        if (skuNumberField !== undefined) {
-            //            return skuNumberField.displayValue;
-            //        }
-            //        return "";
-            //    }
-            //},
             {
-                columnName: specificationMainNameField, exportOperation: function (entity) {
+                columnName: function (entity) {
+                    if (entity !== null && entity !== undefined) {
+                        if (entity.summary.entityTypeId === "Product") {
+                            return "ProductNumber";
+                        }
+                        else if (entity.summary.entityTypeId === "Item") {
+                            return "ItemNumber";
+                        } 
+                    }
+                    return "-";
+                },
+                exportOperation: function (entity) {
+                    var field = entity.fields.find(function(field) {
+                        return field.fieldTypeId === "ItemNumber" || field.fieldTypeId === "ProductNumber";
+                    });
+                    if (field !== undefined) {
+                        return field.displayValue;
+                    }
+                    return "-";
+                }
+            },
+            {
+                columnName: function(entity) {
+                    return specificationMainNameField;
+                },
+                exportOperation: function (entity) {
                     return specifications[selectedSpecificationId].specificationName;
                 }
             }
@@ -359,15 +376,22 @@
                 return exp;
             }
         };
+
         var validationAdditionalEntityInformation = function (entity) {
-                    var skuNumberField = entity.fields.find(function(field) {
-                        return field.fieldTypeId === "SKUSKUNumber";
-                    });
-                    if (skuNumberField !== undefined) {
-                        return ": SKUNumber = " + skuNumberField.displayValue;
-                    }
-                    return "";
-                };
+            var itemNumberField = entity.fields.find(function(field) {
+                return field.fieldTypeId === "ItemNumber";
+            });
+            if (itemNumberField !== undefined) {
+                return ": Item Number = " + itemNumberField.displayValue;
+            }
+            var productNumberField = entity.fields.find(function(field) {
+                return field.fieldTypeId === "ProductNumber";
+            });
+            if (productNumberField !== undefined) {
+                return ": Product Number = " + productNumberField.displayValue;
+            }
+            return "";
+        };
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -388,7 +412,7 @@
 
             specificationNameColumnIndex = undefined;
             predefinedColumns.forEach(function(column, index) {
-                if (column.columnName === specificationMainNameField) {
+                if (column.columnName(null) === specificationMainNameField) {
                     specificationNameColumnIndex = index;
                 }
             });
@@ -621,7 +645,7 @@
             var ajaxSettings = buildAjaxSettings("entities:fetchdata");
             ajaxSettings.data = JSON.stringify({
                 "entityIds": entityIds,
-                "objects": "FieldsSummary,SpecificationSummary",
+                "objects": "EntitySummary,FieldsSummary,SpecificationSummary",
                 "outbound": {
                     "linkTypeIds": specificationLinkTypeIds,
                     "objects": "FieldValues"
@@ -883,16 +907,7 @@
             var exportFormat = getSelectedExportFormat();
 
             var data = [];
-            var header = _.map(predefinedColumns, function (column) { return column.columnName; });
-            specificationFields.forEach(function (spec, index) {
-                if (spec.dataType === "LocaleString") {
-                    generateHeaderForLocaleString(spec.name[language]).forEach(function(ls) {
-                        header.push(ls);
-                    });
-                } else {
-                    header.push(spec.name[language]);
-                }
-            });
+            var header = generateHeader(specificationFields, entitiesWithSelectedSpecification);
             console.log(header);
             data.push(header);
 
@@ -936,6 +951,26 @@
 
             var specificationName = specifications[selectedSpecificationId].specificationName;
             download(specificationName, data, exportFormat);
+        }
+
+        function generateHeader(specificationFields, entitiesWithSelectedSpecification) {
+            var entity = entitiesWithSelectedSpecification[0];
+            
+            console.log("generateHeader");
+            console.log(entity);
+
+            var header = _.map(predefinedColumns, function (column) { return column.columnName(entity); });
+            specificationFields.forEach(function (spec, index) {
+                if (spec.dataType === "LocaleString") {
+                    generateHeaderForLocaleString(spec.name[language]).forEach(function(ls) {
+                        header.push(ls);
+                    });
+                } else {
+                    header.push(spec.name[language]);
+                }
+            });
+
+            return header;
         }
 
         function generateHeaderForLocaleString(specificationName) {
@@ -1128,7 +1163,7 @@
                 validationFailureHtml: "",
                 entitiesAndSpecificationsToUpdate: []
             };
-            var headerVerification = verifyHeader(lines[0]);
+            var headerVerification = verifyHeader(entitiesWithSelectedSpecification, lines[0], lines[1][0]);
             if (headerVerification.message.length == 0) {
                 var skipHeader = true;
                 lines.forEach(function (line, index) {
@@ -1298,8 +1333,21 @@
             return result;
         }
 
-        function verifyHeader(header) {
+        function verifyHeader(entitiesWithSelectedSpecification, header, firstEntityId) {
+            var entityId = parseInt(firstEntityId);
+            var entity = entitiesWithSelectedSpecification.find(function (entity) {
+                return entity.entityId == entityId;
+            });
+
+            console.log("verifyHeader: entityId = " + entityId + ", entity =");
+            console.log(entity);
+
             var result = { message: "", specificationFieldsMatchingHeader: [] };
+
+            if (entity === undefined) {
+                result.message = "First entity with id " + entityId + " does not contain the selected specification: " + specifications[selectedSpecificationId].specificationName;
+                return result;
+            }
 
             if (header.length < predefinedColumns.length) {
                 result.message = 'Header (and file) is not ' + csvDivider + '-separated';
@@ -1307,8 +1355,8 @@
             }
 
             for (var i = 0; i < predefinedColumns.length; i++) {
-                if (header[i] !== predefinedColumns[i].columnName) {
-                    result.message = 'Column header number "' + (i + 1) + '" must have the name "' + predefinedColumns[i].columnName + '"';
+                if (header[i] !== predefinedColumns[i].columnName(entity)) {
+                    result.message = 'Column header number ' + (i + 1) + ' must have the name "' + predefinedColumns[i].columnName(entity) + '"';
                     return result;
                 }
             }
