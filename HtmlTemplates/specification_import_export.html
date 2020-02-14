@@ -28,9 +28,9 @@
 
     <script type="text/javascript" src="https://unpkg.com/xlsx/dist/shim.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.js"></script>
-    <script type="text/javascript" src="https://unpkg.com/exceljs/dist/exceljs.js"></script>
-    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/exceljs/dist/exceljs.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js"></script>
 
     <style type="text/css">
         table {
@@ -1072,7 +1072,7 @@
         function GenerateCVLWorksheet(usedCvls, workbook) {
             var sheetName = "CVLs";
             var cvlSheet = workbook.addWorksheet(sheetName);
-            //cvlSheet.state = 'hidden';
+            cvlSheet.state = 'hidden';
 
             var validationData = [];
             var currentSheetColumn = 1;
@@ -1080,8 +1080,7 @@
                 var matchingCvl = allCvls.find(function (cvl) {
                     return cvl.id === cvlId;
                 });
-                console.log("matchingCvl");
-                console.log(matchingCvl);
+
                 if (matchingCvl !== undefined) {
                     var column = [];
                     column.push(cvlId);
