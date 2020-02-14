@@ -28,6 +28,9 @@
 
     <script type="text/javascript" src="https://unpkg.com/xlsx/dist/shim.min.js"></script>
     <script type="text/javascript" src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.26.0/polyfill.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/exceljs/dist/exceljs.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.js"></script>
 
     <style type="text/css">
         table {
@@ -302,7 +305,7 @@
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
-        var specificationTemplateChunkSize = 200;
+        var specificationTemplateChunkSize = 100;
 
         var foundEntities;
         var workAreasArray;
@@ -321,7 +324,7 @@
 
         var predefinedColumns = [
             {
-                columnName: function(entity) {
+                columnName: function (entity) {
                     return "EntityId";
                 },
                 exportOperation: function (entity) {
@@ -336,12 +339,12 @@
                         }
                         else if (entity.summary.entityTypeId === "Item") {
                             return "ItemNumber";
-                        } 
+                        }
                     }
                     return "-";
                 },
                 exportOperation: function (entity) {
-                    var field = entity.fields.find(function(field) {
+                    var field = entity.fields.find(function (field) {
                         return field.fieldTypeId === "ItemNumber" || field.fieldTypeId === "ProductNumber";
                     });
                     if (field !== undefined) {
@@ -351,7 +354,7 @@
                 }
             },
             {
-                columnName: function(entity) {
+                columnName: function (entity) {
                     return specificationMainNameField;
                 },
                 exportOperation: function (entity) {
@@ -378,13 +381,13 @@
         };
 
         var validationAdditionalEntityInformation = function (entity) {
-            var itemNumberField = entity.fields.find(function(field) {
+            var itemNumberField = entity.fields.find(function (field) {
                 return field.fieldTypeId === "ItemNumber";
             });
             if (itemNumberField !== undefined) {
                 return ": Item Number = " + itemNumberField.displayValue;
             }
-            var productNumberField = entity.fields.find(function(field) {
+            var productNumberField = entity.fields.find(function (field) {
                 return field.fieldTypeId === "ProductNumber";
             });
             if (productNumberField !== undefined) {
@@ -392,6 +395,15 @@
             }
             return "";
         };
+
+        var excelTabs = [
+            '_', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T',
+            'U', 'V', 'W', 'X', 'Y', 'Z', 'AA', 'AB', 'AC', 'AD', 'AE', 'AF', 'AG', 'AH', 'AI', 'AJ', 'AK', 'AL', 'AM',
+            'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE',
+            'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL', 'BM', 'BN', 'BO', 'BP', 'BQ', 'BR', 'BS', 'BT', 'BU', 'BV', 'BW',
+            'BX', 'BY', 'BZ', 'CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG', 'CH', 'CI', 'CJ', 'CK', 'CL', 'CM', 'CN', 'CO',
+            'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX', 'CY', 'CZ'
+        ];
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -411,7 +423,7 @@
             xlf.addEventListener('change', handleFile, false);
 
             specificationNameColumnIndex = undefined;
-            predefinedColumns.forEach(function(column, index) {
+            predefinedColumns.forEach(function (column, index) {
                 if (column.columnName(null) === specificationMainNameField) {
                     specificationNameColumnIndex = index;
                 }
@@ -427,12 +439,12 @@
             if (hasTemplateContext()) {
                 getCvlValues(apiKeyUserCVL, false);
 
-                var cvlForApiKeyUser = allCvls.find(function(cvl) {
+                var cvlForApiKeyUser = allCvls.find(function (cvl) {
                     return cvl.id === apiKeyUserCVL;
                 });
                 if (cvlForApiKeyUser !== undefined && cvlForApiKeyUser !== null) {
                     console.log(cvlForApiKeyUser.values);
-                    var apiKeyUser = cvlForApiKeyUser.values.find(function(keyValue) {
+                    var apiKeyUser = cvlForApiKeyUser.values.find(function (keyValue) {
                         return keyValue.value === templateContext.userEmail;
                     });
                     if (apiKeyUser !== undefined && apiKeyUser !== null) {
@@ -480,8 +492,7 @@
             console.log('setCsvDivider: csvDivider = ' + csvDivider + ', cvlSeparator = ' + cvlSeparator);
         }
 
-        function toggleCvlSeparator()
-        {
+        function toggleCvlSeparator() {
             if (csvDivider === ',') {
                 cvlSeparator = ';';
             } else {
@@ -674,7 +685,8 @@
                 }
 
                 fillSpecificationNames(specifications);
-            });        }
+            });
+        }
 
         // https://codereview.stackexchange.com/questions/174310/process-array-with-x-parallel-executions
         function forEachParallel(arrayOfChunks, processChunksFunction, threads) {
@@ -744,7 +756,7 @@
                     delete specificationsClone[key];
                 }
             });
- 
+
             for (var key in specificationsClone) {
                 $("#specificationnameselector").append('<option value="' + key + '">' + specifications[key].specificationName + " (" + specifications[key].entityCount + ")" + '</option>');
             }
@@ -916,6 +928,15 @@
                 cvlSeparator = ',';
             }
 
+            var usedCvls = _.map(predefinedColumns, function (column) { return ""; });
+            specificationFields.forEach(function (spec, index) {
+                if (spec.cvlId) {
+                    usedCvls.push(spec.cvlId);
+                } else {
+                    usedCvls.push("");
+                }
+            });
+
             entitiesWithSelectedSpecification.forEach(function (entity, index) {
                 var line = _.map(predefinedColumns, function (column) { return column.exportOperation(entity); });
                 specificationFields.forEach(function (spec, index) {
@@ -930,7 +951,7 @@
 
                     var push = true;
                     if (field.specificationDataType === "LocaleString") {
-                        splitLocaleStringToColumnValues(field.value).forEach(function(ls) {
+                        splitLocaleStringToColumnValues(field.value).forEach(function (ls) {
                             line.push(ls);
                         });
                         push = false;
@@ -950,19 +971,19 @@
             });
 
             var specificationName = specifications[selectedSpecificationId].specificationName;
-            download(specificationName, data, exportFormat);
+            download(specificationName, data, usedCvls, exportFormat);
         }
 
         function generateHeader(specificationFields, entitiesWithSelectedSpecification) {
             var entity = entitiesWithSelectedSpecification[0];
-            
+
             console.log("generateHeader");
             console.log(entity);
 
             var header = _.map(predefinedColumns, function (column) { return column.columnName(entity); });
             specificationFields.forEach(function (spec, index) {
                 if (spec.dataType === "LocaleString") {
-                    generateHeaderForLocaleString(spec.name[language]).forEach(function(ls) {
+                    generateHeaderForLocaleString(spec.name[language]).forEach(function (ls) {
                         header.push(ls);
                     });
                 } else {
@@ -989,7 +1010,7 @@
             return result;
         }
 
-        function download(filename, data, exportFormat) {
+        function download(filename, data, usedCvls, exportFormat) {
             if (exportFormat === "csv") {
                 var csv = "";
                 data.forEach(function (line) {
@@ -1004,11 +1025,76 @@
                 document.body.appendChild(element);
                 element.click();
             } else {
-                var wb = XLSX.utils.book_new();
-                var ws = XLSX.utils.aoa_to_sheet(data);
-                XLSX.utils.book_append_sheet(wb, ws, filename);
-                XLSX.writeFile(wb, filename + '.' + exportFormat);
+
+                console.log("Download Excel");
+                console.log(usedCvls);
+                console.log(data);
+
+                var workbook = new ExcelJS.Workbook();
+                var dataSheet = workbook.addWorksheet(filename);
+                var cvlValidationProperties = GenerateCVLWorksheet(usedCvls, workbook);
+
+                console.log('cvlValidationProperties');
+                console.log(cvlValidationProperties);
+
+                data.forEach(function (line) {
+                    dataSheet.addRow(line);
+                });
+
+                for (var i = 0; i < data[0].length; i++) {
+                    var cvlId = usedCvls[i];
+                    if (cvlId.length > 0) {
+                        for (var j = 0; j < data.length - 1; j++) {
+                            var cellId = excelTabs[i + 1] + (j + 2);
+                            var validationExpression = cvlValidationProperties.find(function (prop) {
+                                return prop.cvlId === cvlId;
+                            });
+                            dataSheet.getCell(cellId).dataValidation = {
+                                type: 'list',
+                                allowBlank: true,
+                                formulae: [validationExpression.validationExpression]
+                            };
+                        }
+                    }
+                }
+
+                workbook.xlsx.writeBuffer()
+                    .then(buffer => saveAs(new Blob([buffer]), filename + '.' + exportFormat))
+                    .catch(err => console.log('Error writing excel export', err));
+
+                //var wb = XLSX.utils.book_new();
+                //var ws = XLSX.utils.aoa_to_sheet(data);
+                //XLSX.utils.book_append_sheet(wb, ws, filename);
+                //XLSX.writeFile(wb, filename + '.' + exportFormat);
             }
+        }
+
+        function GenerateCVLWorksheet(usedCvls, workbook) {
+            var sheetName = "CVLs";
+            var cvlSheet = workbook.addWorksheet(sheetName);
+            //cvlSheet.state = 'hidden';
+
+            var validationData = [];
+            var currentSheetColumn = 1;
+            usedCvls.forEach(function (cvlId) {
+                var matchingCvl = allCvls.find(function (cvl) {
+                    return cvl.id === cvlId;
+                });
+                console.log("matchingCvl");
+                console.log(matchingCvl);
+                if (matchingCvl !== undefined) {
+                    var column = [];
+                    column.push(cvlId);
+                    matchingCvl.values.forEach(function (value) {
+                        column.push(value.key);
+                    });
+                    cvlSheet.getColumn(currentSheetColumn).values = column;
+                    var tabId = excelTabs[currentSheetColumn];
+                    validationData.push({ cvlId: cvlId, validationExpression: sheetName + "!$" + tabId + "$2:$" + tabId + "$" + column.length });
+                    currentSheetColumn++;
+                }
+            });
+            return validationData;
         }
 
         function getSelectedExportFormat() {
@@ -1076,7 +1162,7 @@
 
         function toCsv(workbook) {
             var result = [];
-            workbook.SheetNames.forEach(function(sheetName) {
+            workbook.SheetNames.forEach(function (sheetName) {
                 var csv = XLSX.utils.sheet_to_csv(workbook.Sheets[sheetName], { FS: ";", strip: true });
                 result.push(csv);
             });
@@ -1132,13 +1218,13 @@
                     var ajaxSettings = buildAjaxSettings("entities/" + entityAndSpecifications.entityId + "/specificationvalues");
                     ajaxSettings.type = "PUT";
                     ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
-                    ajaxSettings.error = function(xhr) {
+                    ajaxSettings.error = function (xhr) {
                         failedEntityIds.push(entityAndSpecifications.entityId);
 
                         showElement('importFailureRow');
                         var failedHtml = "Failed entity id(s): ";
                         var divider = "";
-                        failedEntityIds.forEach(function(id, index) {
+                        failedEntityIds.forEach(function (id, index) {
                             failedHtml += divider + id;
                             divider = ',';
                         });
@@ -1222,13 +1308,13 @@
         }
 
         function validateCvlKeys(cvlKeys, cvlId) {
-            var matchingCvl = allCvls.find(function(cvl) {
+            var matchingCvl = allCvls.find(function (cvl) {
                 return cvl.id === cvlId;
             });
 
             var result = [];
             cvlKeys.forEach(function (cvlKey) {
-                var matchingCvlValue = matchingCvl.values.find(function(value) {
+                var matchingCvlValue = matchingCvl.values.find(function (value) {
                     return value.key === cvlKey;
                 });
                 if (matchingCvlValue === undefined) {
@@ -1240,7 +1326,7 @@
 
         function createLocalString(cvlValue) {
             var localeString = new Object();
-            allLanguages.forEach(function(lang) {
+            allLanguages.forEach(function (lang) {
                 localeString[lang.name] = cvlValue;
             });
             return localeString;
