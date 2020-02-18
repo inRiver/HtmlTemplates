@@ -87,10 +87,9 @@
             border-width: 2px;
         }
 
-        .buttonInvalidForInput {
+        .invalidForInput {
             cursor: not-allowed;
             pointer-events: none;
-            /*Button disabled - CSS color class*/
             color: #c0c0c0;
             background-color: #ffffff;
         }
@@ -321,6 +320,7 @@
         var cvlSeparator;
         var specificationMainNameField = 'SpecificationName';
         var specificationNameColumnIndex;
+        var entitiesDownloadingCount = 0;
 
         var predefinedColumns = [
             {
@@ -530,6 +530,16 @@
             });
         }
 
+        function buttonAvailability(buttonId, enabled) {
+            if (!enabled) {
+                console.log('addClass("invalidForInput")');
+                $('#' + buttonId).addClass('invalidForInput');
+            } else {
+                console.log('removeClass("invalidForInput")');
+                $('#' + buttonId).removeClass('invalidForInput');
+            }
+        }
+
         function renderTree(prefix, rootNodeName, topLevelId) {
             var html = '<li id="' + topLevelId + '" value="none">' + rootNodeName;
             html += '<ul>';
@@ -630,10 +640,11 @@
                 hideSelectFields();
 
                 foundEntities = [];
+                entitiesDownloadingCount = entities.entityIds.length;
+
                 specifications = new Object();
                 var chunkedFoundEntityIds = chunk(entities.entityIds, specificationTemplateChunkSize);
 
-                foundEntities = [];
                 console.log('chunkedFoundEntityIds');
                 console.log(chunkedFoundEntityIds);
 
@@ -641,7 +652,6 @@
                 specificationnamesselectorhtml += '<option value="none">-</option>';
                 specificationnamesselectorhtml += "</select>";
                 document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
-
 
                 forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
             });
@@ -685,7 +695,24 @@
                 }
 
                 fillSpecificationNames(specifications);
+
+                doImportExportButtonEnabled('doImport', 'downloadProgressImport');
+                doImportExportButtonEnabled('doExport', 'downloadProgressExport');
             });
+        }
+
+        function doImportExportButtonEnabled(buttonId, progressId) {
+            var buttonEnabled = (foundEntities.length + specificationTemplateChunkSize) > entitiesDownloadingCount;
+
+            if (!buttonEnabled) {
+                document.getElementById(progressId).innerHTML =
+                    "Download progress: " + Math.round(foundEntities.length / entitiesDownloadingCount * 100) + " %";
+
+            } else {
+                document.getElementById(progressId).innerHTML = "";
+            }
+
+            buttonAvailability(buttonId, buttonEnabled);
         }
 
         // https://codereview.stackexchange.com/questions/174310/process-array-with-x-parallel-executions
@@ -1506,6 +1533,7 @@
                     <div class="col-lg-4">
                         <div class="row">
                             <input type="file" id="doImport" accept=".csv,.xlsx" />
+                            <p id="downloadProgressImport"></p>
                         </div>
                         <div class="row">
                             <br/>
@@ -1548,8 +1576,9 @@
                     </table>
                 </div>
                 <div class="row">
-                    <div class="col-lg-2">
+                    <div class="col-lg-4">
                         <button onclick="doExport()" class="btn btn-primary" id="doExport">Export</button>
+                        <p id="downloadProgressExport"></p>
                     </div>
                     <div class="col-lg-4">
                         File format:

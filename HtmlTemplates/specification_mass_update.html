@@ -124,10 +124,9 @@
             border-width: 2px;
         }
 
-        .buttonInvalidForInput {
+        .invalidForInput {
             cursor: not-allowed;
             pointer-events: none;
-            /*Button disabled - CSS color class*/
             color: #c0c0c0;
             background-color: #ffffff;
         }
@@ -355,6 +354,8 @@
         var showDataType = false;
         var specifications = new Object();
         var specificationMainNameField = 'SpecificationName';
+        var allEntriesValid = true;
+        var entitiesDownloadingCount = 0;
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -535,11 +536,13 @@
 
                 hideSelectFields();
 
+                foundEntities = [];
+                entitiesDownloadingCount = entities.entityIds.length;
+                allEntriesValid = true;
 
                 specifications = new Object();
                 var chunkedFoundEntityIds = chunk(entities.entityIds, specificationTemplateChunkSize);
 
-                foundEntities = [];
                 console.log('chunkedFoundEntityIds');
                 console.log(chunkedFoundEntityIds);
 
@@ -547,7 +550,6 @@
                 specificationnamesselectorhtml += '<option value="none">-</option>';
                 specificationnamesselectorhtml += "</select>";
                 document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
-
 
                 forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
             });
@@ -568,28 +570,31 @@
                     "objects": "FieldValues"
                 }
             });
+
             return $.post(ajaxSettings, function (entities) {
 
-                    foundEntities = foundEntities.concat(entities);
+                foundEntities = foundEntities.concat(entities);
 
-                    console.log("Success fetching entities");
-                    console.log(entities);
+                console.log("Success fetching entities");
+                console.log(entities);
 
-                    for (var i = 0; i < entities.length; i++) {
-                        for (var j = 0; j < entities[i].outbound.length; j++) {
-                            var specification = entities[i].outbound[j];
-                            if (!(specification.entityId in specifications)) {
-                                var specificationEntry = new Object();
-                                specificationEntry.specificationName = specification.fieldValues.find(field => field.fieldTypeId === specificationMainNameField).value;
-                                specificationEntry.entityCount = 1;
-                                specifications[specification.entityId] = specificationEntry;
-                            } else {
-                                specifications[specification.entityId].entityCount++;
-                            }
+                for (var i = 0; i < entities.length; i++) {
+                    for (var j = 0; j < entities[i].outbound.length; j++) {
+                        var specification = entities[i].outbound[j];
+                        if (!(specification.entityId in specifications)) {
+                            var specificationEntry = new Object();
+                            specificationEntry.specificationName = specification.fieldValues.find(field => field.fieldTypeId === specificationMainNameField).value;
+                            specificationEntry.entityCount = 1;
+                            specifications[specification.entityId] = specificationEntry;
+                        } else {
+                            specifications[specification.entityId].entityCount++;
                         }
                     }
+                }
 
-                    fillSpecificationNames(specifications);
+                fillSpecificationNames(specifications);
+
+                doMassUpdateButtonEnabled();
             });
         }
 
@@ -929,25 +934,43 @@
         }
 
         function validate() {
-            var isValid = true;
+            allEntriesValid = true;
             $('input[type=text]').each(function (index, input) {
                 var regExp = $(this).attr('pattern');
                 var value = $(this).val();
                 if (regExp !== undefined && value !== undefined && regExp.length > 0 && value.length > 0) {
                     if (!value.match(regExp)) {
-                        isValid = false;
+                        allEntriesValid = false;
                     }
                 }
             });
 
-            console.log('validate, isValid = ' + isValid);
+            console.log('validate, isValid = ' + allEntriesValid);
 
-            if (!isValid) {
-                console.log('addClass("buttonInvalidForInput")');
-                $('#doMassUpdate').addClass('buttonInvalidForInput');
+            doMassUpdateButtonEnabled();
+        }
+
+        function doMassUpdateButtonEnabled() {
+            var buttonEnabled = (foundEntities.length + specificationTemplateChunkSize) > entitiesDownloadingCount && allEntriesValid;
+
+            if (!buttonEnabled) {
+                document.getElementById("downloadProgress").innerHTML =
+                    "Download progress: " + Math.round(foundEntities.length / entitiesDownloadingCount * 100) + " %";
+
             } else {
-                console.log('removeClass("buttonInvalidForInput")');
-                $('#doMassUpdate').removeClass('buttonInvalidForInput');
+                document.getElementById("downloadProgress").innerHTML = "";
+            }
+
+            buttonAvailability('doMassUpdate', buttonEnabled);
+        }
+
+        function buttonAvailability(buttonId, enabled) {
+            if (!enabled) {
+                console.log('addClass("invalidForInput")');
+                $('#' + buttonId).addClass('invalidForInput');
+            } else {
+                console.log('removeClass("invalidForInput")');
+                $('#' + buttonId).removeClass('invalidForInput');
             }
         }
 
@@ -1093,7 +1116,7 @@
                 };
                 ajaxSettings.complete = function() {
                     entityUpdateCount++;
-                    document.getElementById("progress").innerHTML =
+                    document.getElementById("massUpdateProgress").innerHTML =
                         "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
                 };
 
@@ -1146,6 +1169,7 @@
         </div>
         <div id="doMassUpdateButtonDiv" class="row">
             <div class="col-lg-2">
+                <p id="downloadProgress"></p>
                 <button onclick="doMassUpdate()" class="btn btn-primary" id="doMassUpdate">Do Mass Update</button>
             </div>
             <div class="col-lg-10">
@@ -1154,7 +1178,7 @@
                         <p id="totalItems"></p>
                     </div>
                     <div class="col-lg-4">
-                        <p id="progress"></p>
+                        <p id="massUpdateProgress"></p>
                     </div>
                 </div>
                 <div class="row">
