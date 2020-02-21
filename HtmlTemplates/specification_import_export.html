@@ -328,7 +328,7 @@
     </script>
 
     <script type="text/javascript">
-        //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
+        //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - START
         var fallbackApiKey = "145a024134fc97d14777edf0323c244f";
         var apiKey = fallbackApiKey;
         var apiKeyUserCVL = "ApiKeyUser";
@@ -337,22 +337,6 @@
 
         var specificationTypeId = "Specification";
         var specificationTemplateChunkSize = 100;
-
-        var foundEntities;
-        var workAreasArray;
-        var specificationFieldsArray;
-        var allCvls = [];
-        var specificationLinkTypes;
-        var selectedSpecificationId;
-        var specificationLinkTypeIds = "ProductSpecifications,Item2SpecificationCorrect";
-        var allLanguages;
-        var showDataType = false;
-        var specifications = new Object();
-        var csvDivider;
-        var cvlSeparator;
-        var specificationMainNameField = 'SpecificationName';
-        var specificationNameColumnIndex;
-        var entitiesDownloadingCount = 0;
 
         var predefinedColumns = [
             {
@@ -394,6 +378,40 @@
                 }
             }
         ];
+
+        var validationAdditionalEntityInformation = function (entity) {
+            var itemNumberField = entity.fields.find(function (field) {
+                return field.fieldTypeId === "ItemNumber";
+            });
+            if (itemNumberField !== undefined) {
+                return ": Item Number = " + itemNumberField.displayValue;
+            }
+            var productNumberField = entity.fields.find(function (field) {
+                return field.fieldTypeId === "ProductNumber";
+            });
+            if (productNumberField !== undefined) {
+                return ": Product Number = " + productNumberField.displayValue;
+            }
+            return "";
+        };
+        //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - END
+
+        var foundEntities;
+        var workAreasArray;
+        var specificationFieldsArray;
+        var allCvls = [];
+        var specificationLinkTypes;
+        var selectedSpecificationId;
+        var specificationLinkTypeIds = "ProductSpecifications,Item2SpecificationCorrect";
+        var allLanguages;
+        var showDataType = false;
+        var specifications = new Object();
+        var csvDivider;
+        var cvlSeparator;
+        var specificationMainNameField = 'SpecificationName';
+        var specificationNameColumnIndex;
+        var entitiesDownloadingCount = 0;
+
         var validations = {
             "Integer": function (value) {
                 var exp = /^([+-]?[0-9]*)$/.test(value);
@@ -410,22 +428,6 @@
                 console.log("DateTime: " + value + ", exp: " + exp);
                 return exp;
             }
-        };
-
-        var validationAdditionalEntityInformation = function (entity) {
-            var itemNumberField = entity.fields.find(function (field) {
-                return field.fieldTypeId === "ItemNumber";
-            });
-            if (itemNumberField !== undefined) {
-                return ": Item Number = " + itemNumberField.displayValue;
-            }
-            var productNumberField = entity.fields.find(function (field) {
-                return field.fieldTypeId === "ProductNumber";
-            });
-            if (productNumberField !== undefined) {
-                return ": Product Number = " + productNumberField.displayValue;
-            }
-            return "";
         };
 
         var excelTabs = [
