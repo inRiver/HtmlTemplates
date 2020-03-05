@@ -991,7 +991,7 @@
 
             var usedCvls = _.map(predefinedColumns, function (column) { return ""; });
             specificationFields.forEach(function (spec, index) {
-                if (spec.cvlId) {
+                if (spec.cvlId && !spec.isMultiValue) {
                     usedCvls.push(spec.cvlId);
                 } else {
                     usedCvls.push("");
