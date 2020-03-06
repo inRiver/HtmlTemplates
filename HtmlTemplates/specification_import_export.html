@@ -1353,7 +1353,6 @@
 
                 console.log('entitiesAndSpecificationsToUpdate');
                 console.log(result.entitiesAndSpecificationsToUpdate);
-                console.log(result.validationFailureHtml);
             } else {
                 result.validationFailureHtml += 'Imported file does not have a correct header. ' + headerVerification.message;
             }
@@ -1382,6 +1381,27 @@
                 }
             });
             return result.join(', ');
+        }
+
+        function renderDropDownsForFaultyCvls(specFieldId) {
+            var specificationField = specificationFieldsArray.find(function (specField) {
+                return specField.id == specFieldId;
+            });
+            console.log(specificationField);
+            var multiple = specificationField.isMultiValue ? " multiple" : "";
+            var dropdownHtml = "<select" + multiple + ">";
+
+            var cvl = allCvls.find(function (cvl) {
+                return cvl.id === specificationField.cvlId;
+            });
+            console.log("renderDropDownsForFaultyCvls:");
+            console.log(cvl);
+            for (var i = 0; i < cvl.values.length; i++) {
+                dropdownHtml += "<option value='" + cvl.values[i].key + "'>" + cvl.values[i].key + "</option>";
+            }
+            dropdownHtml += "</select>";
+
+            return dropdownHtml;
         }
 
         function createLocalString(cvlValue) {
@@ -1432,7 +1452,8 @@
                     }
                     var potentialErrorString = validateCvlKeys(cvlKeysToValidate, specifications[i].specificationField.cvlId);
                     if (potentialErrorString.length > 0) {
-                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> has invalid values: <b>'" + potentialErrorString + "'</b>");
+                        result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> has invalid values: <b>'" + potentialErrorString + "'</b><br/>" +
+                            "<span style='vertical-align:top;'>Select correct value: </span><span>" + renderDropDownsForFaultyCvls(specifications[i].specificationField.id) + "</span>");
                     }
                 } else if (specifications[i].specificationField.dataType === "LocaleString") {
                     if (localeStringFields[specifications[i].specificationField.id] === undefined) {
