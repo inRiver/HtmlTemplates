@@ -411,6 +411,7 @@
         var specificationMainNameField = 'SpecificationName';
         var specificationNameColumnIndex;
         var entitiesDownloadingCount = 0;
+        var entitiesAndSpecificationsToUpdate;
 
         var validations = {
             "Integer": function (value) {
@@ -812,7 +813,6 @@
             $("#specificationnameselector > option").each(function () {
                 var key = $(this).attr("value");
                 if (key !== "none") {
-                    var specification = specifications[key];
                     $(this).text(specifications[key].specificationName + " (" + specifications[key].entityCount + ")");
                     delete specificationsClone[key];
                 }
@@ -938,6 +938,7 @@
             hideElement('fieldtyperow');
             hideElement('tabs');
             hideElement('importFailureRow');
+            hideElement('doReimport');
         }
 
         function hideElement(elementId) {
@@ -1171,6 +1172,7 @@
 
         function doImport(files) {
             hideElement('importFailureRow');
+            hideElement('doReimport');
 
             console.log(files);
             // Check for the various File API support.
@@ -1266,40 +1268,17 @@
             console.log(entitiesWithSelectedSpecification);
 
             var validationResult = validateContents(entitiesWithSelectedSpecification, lines);
+            entitiesAndSpecificationsToUpdate = validationResult.entitiesAndSpecificationsToUpdate;
             if (validationResult.valid) {
-                var failedEntityIds = [];
-
-                var entityUpdateCount = 0;
-                var totalEntities = validationResult.entitiesAndSpecificationsToUpdate.length;
-
-                document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
-
-                validationResult.entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
-                    var ajaxSettings = buildAjaxSettings("entities/" + entityAndSpecifications.entityId + "/specificationvalues");
-                    ajaxSettings.type = "PUT";
-                    ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
-                    ajaxSettings.error = function (xhr) {
-                        failedEntityIds.push(entityAndSpecifications.entityId);
-
-                        showElement('importFailureRow');
-                        var failedHtml = "Failed entity id(s): ";
-                        var divider = "";
-                        failedEntityIds.forEach(function (id, index) {
-                            failedHtml += divider + id;
-                            divider = ',';
-                        });
-
-                        document.getElementById("failed").innerHTML = failedHtml;
-                    };
-                    ajaxSettings.complete = function () {
-                        entityUpdateCount++;
-                        document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
-                    }
-                    $.ajax(ajaxSettings);
-                });
+                sendSpecifications(entitiesAndSpecificationsToUpdate);
             } else {
                 showElement('importFailureRow');
                 document.getElementById("validationFailures").innerHTML = validationResult.validationFailureHtml;
+                if (validationResult.hasValidationFailuresForCvls) {
+                    showElement('doReimport');
+                } else {
+                    hideElement('doReimport');
+                }
             }
         }
 
@@ -1307,7 +1286,8 @@
             var result = {
                 valid: true,
                 validationFailureHtml: "",
-                entitiesAndSpecificationsToUpdate: []
+                entitiesAndSpecificationsToUpdate: [],
+                hasValidationFailuresForCvls: false
             };
             var headerVerification = verifyHeader(entitiesWithSelectedSpecification, lines[0], lines[1][0]);
             if (headerVerification.message.length == 0) {
@@ -1331,11 +1311,17 @@
 
                             var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
                             result.entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
+                            result.hasValidationFailuresForCvls |= entityAndSpecificationToUpdate.hasValidationFailuresForCvls;
                             if (entityAndSpecificationToUpdate.validationFailures.length > 0) {
                                 validationFailureListItems += _.map(entityAndSpecificationToUpdate.validationFailures,
                                     function (failure) {
                                         return '<li>' + failure + '</li>';
                                     }).join('');
+                            }
+                            if (result.hasValidationFailuresForCvls) {
+                                showElement('doReimport');
+                            } else {
+                                hideElement('doReimport');
                             }
 
                             if (validationFailureListItems.length > 0) {
@@ -1358,6 +1344,71 @@
             }
             result.valid = result.validationFailureHtml.length === 0;
             return result;
+        }
+
+        function sendSpecifications(entitiesAndSpecificationsToUpdate) {
+            var failedEntityIds = [];
+
+            var entityUpdateCount = 0;
+            var totalEntities = entitiesAndSpecificationsToUpdate.length;
+
+            document.getElementById("totalItems").innerHTML = "Total entities to update: " + totalEntities;
+
+            entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecifications, index) {
+                var ajaxSettings = buildAjaxSettings("entities/" + entityAndSpecifications.entityId + "/specificationvalues");
+                ajaxSettings.type = "PUT";
+                ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
+                ajaxSettings.error = function (xhr) {
+                    failedEntityIds.push(entityAndSpecifications.entityId);
+
+                    showElement('importFailureRow');
+                    hideElement('doReimport');
+                    var failedHtml = "Failed entity id(s): ";
+                    var divider = "";
+                    failedEntityIds.forEach(function (id, index) {
+                        failedHtml += divider + id;
+                        divider = ',';
+                    });
+
+                    document.getElementById("failed").innerHTML = failedHtml;
+                };
+                ajaxSettings.complete = function () {
+                    entityUpdateCount++;
+                    document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
+                }
+                $.ajax(ajaxSettings);
+            });
+
+        }
+
+        function doReimport() {
+            $("#validationFailures .correctCVLSelect").each(function() {
+                var selectValues = $(this).attr("value").split(':');
+                var entityId = selectValues[0];
+                var specificationId = selectValues[1];
+                var isMultiSelectCvl = $(this)[0].hasAttribute("multiple");
+
+                var cvlKeys = "";
+                var separator = "";
+                $(this).children("option:selected").each(function() {
+                    var cvlKey = $(this).attr("value");
+                    console.log("cvlKey = " + cvlKey);
+                    cvlKeys += separator + cvlKey;
+                    separator = ",";
+                });
+                var spec = entitiesAndSpecificationsToUpdate.find(function(spec) {
+                    return spec.entityId == entityId;
+                });
+                var specValueForForUpdate = spec.specificationValuesForUpdate.find(function(specForUpdate) {
+                    return specForUpdate.specificationFieldTypeId == specificationId;
+                });
+                specValueForForUpdate.value = isMultiSelectCvl ? cvlKeys.split(separator) : cvlKeys;
+            });
+            console.log("doReimport");
+            console.log(entitiesAndSpecificationsToUpdate);
+
+            hideElement('importFailureRow');
+            sendSpecifications(entitiesAndSpecificationsToUpdate);
         }
 
         function errorHandler(evt) {
@@ -1383,19 +1434,17 @@
             return result.join(', ');
         }
 
-        function renderDropDownsForFaultyCvls(specFieldId) {
+        function renderDropDownsForFaultyCvls(entityId, specFieldId) {
             var specificationField = specificationFieldsArray.find(function (specField) {
                 return specField.id == specFieldId;
             });
-            console.log(specificationField);
             var multiple = specificationField.isMultiValue ? " multiple" : "";
-            var dropdownHtml = "<select" + multiple + ">";
 
             var cvl = allCvls.find(function (cvl) {
                 return cvl.id === specificationField.cvlId;
             });
-            console.log("renderDropDownsForFaultyCvls:");
-            console.log(cvl);
+
+            var dropdownHtml = "<select class='correctCVLSelect' value='" + entityId + ":" + specFieldId + "'" + multiple + ">";
             for (var i = 0; i < cvl.values.length; i++) {
                 dropdownHtml += "<option value='" + cvl.values[i].key + "'>" + cvl.values[i].key + "</option>";
             }
@@ -1421,7 +1470,7 @@
             console.log(specifications);
 
             var localeStringFields = new Object();
-            var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: [] };
+            var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: [], hasValidationFailuresForCvls: false };
             var valuePartLine = line.slice(predefinedColumns.length);
 
             console.log(valuePartLine);
@@ -1453,7 +1502,8 @@
                     var potentialErrorString = validateCvlKeys(cvlKeysToValidate, specifications[i].specificationField.cvlId);
                     if (potentialErrorString.length > 0) {
                         result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> has invalid values: <b>'" + potentialErrorString + "'</b><br/>" +
-                            "<span style='vertical-align:top;'>Select correct value: </span><span>" + renderDropDownsForFaultyCvls(specifications[i].specificationField.id) + "</span>");
+                            "<span style='vertical-align:top;'>Select correct value: </span><span>" + renderDropDownsForFaultyCvls(entityId, specifications[i].specificationField.id) + "</span>");
+                        result.hasValidationFailuresForCvls = true;
                     }
                 } else if (specifications[i].specificationField.dataType === "LocaleString") {
                     if (localeStringFields[specifications[i].specificationField.id] === undefined) {
@@ -1617,6 +1667,7 @@
                     <br />
                     <p class="failed" id="failed">Import failed:</p>
                     <ul id="validationFailures"></ul>
+                    <button onclick="doReimport()" class="btn btn-primary" id="doReimport">Reimport</button>
                 </div>
             </div>
             <div id="export">
