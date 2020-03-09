@@ -888,7 +888,7 @@
                 fieldspecificationSelectHtml += "</ul>";
                 document.getElementById("fieldtypeselection").innerHTML = fieldspecificationSelectHtml;
 
-                showElement('tabs');
+                $('#tabs').show();
             });
         }
 
@@ -930,25 +930,15 @@
         }
 
         function hideSpecificationTemplate() {
-            hideElement('specificationtemplaterow');
+            $('#specificationtemplaterow').hide();
             hideSelectFields();
         }
 
         function hideSelectFields() {
-            hideElement('fieldtyperow');
-            hideElement('tabs');
-            hideElement('importFailureRow');
-            hideElement('doReimport');
-        }
-
-        function hideElement(elementId) {
-            var style = document.getElementById(elementId).style;
-            style.display = 'none';
-        }
-
-        function showElement(elementId) {
-            var style = document.getElementById(elementId).style;
-            style.display = 'block';
+            $('#fieldtyperow').hide();
+            $('#tabs').hide();
+            $('#importFailureRow').hide();
+            $('#doReimport').hide();
         }
 
         function doExport() {
@@ -1171,8 +1161,8 @@
         }
 
         function doImport(files) {
-            hideElement('importFailureRow');
-            hideElement('doReimport');
+            $('#importFailureRow').hide();
+            $('#doReimport').hide();
 
             console.log(files);
             // Check for the various File API support.
@@ -1267,7 +1257,7 @@
             console.log("EntitiesWithSelectedSpecification:");
             console.log(entitiesWithSelectedSpecification);
 
-            $("doReimport").hide();
+            $("#doReimport").hide();
             document.getElementById("progress").innerHTML = "";
             document.getElementById("totalItems").innerHTML = "";
 
@@ -1276,13 +1266,13 @@
             if (validationResult.valid) {
                 sendSpecifications(entitiesAndSpecificationsToUpdate);
             } else {
-                showElement('importFailureRow');
+                $('#importFailureRow').show();
                 document.getElementById("validationFailures").innerHTML = validationResult.validationFailureHtml;
                 if (validationResult.hasValidationFailuresForCvls) {
-                    showElement('doReimport');
+                    $('#doReimport').show();
                 } else {
                     $('.isNoneValidCvl').hide();
-                    hideElement('doReimport');
+                    $('#doReimport').hide();
                 }
             }
         }
@@ -1371,8 +1361,8 @@
                 ajaxSettings.error = function (xhr) {
                     failedEntityIds.push(entityAndSpecifications.entityId);
 
-                    showElement('importFailureRow');
-                    hideElement('doReimport');
+                    $('#importFailureRow').show();
+                    $('#doReimport').hide();
                     var failedHtml = "Failed entity id(s): ";
                     var divider = "";
                     failedEntityIds.forEach(function (id, index) {
@@ -1417,7 +1407,7 @@
             console.log("doReimport");
             console.log(entitiesAndSpecificationsToUpdate);
 
-            hideElement('importFailureRow');
+            $('#importFailureRow').hide();
             sendSpecifications(entitiesAndSpecificationsToUpdate);
         }
 
