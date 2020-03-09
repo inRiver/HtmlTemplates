@@ -947,8 +947,8 @@
         }
 
         function showElement(elementId) {
-            var element = document.getElementById(elementId).style;
-            element.display = 'block';
+            var style = document.getElementById(elementId).style;
+            style.display = 'block';
         }
 
         function doExport() {
@@ -1267,6 +1267,10 @@
             console.log("EntitiesWithSelectedSpecification:");
             console.log(entitiesWithSelectedSpecification);
 
+            $("doReimport").hide();
+            document.getElementById("progress").innerHTML = "";
+            document.getElementById("totalItems").innerHTML = "";
+
             var validationResult = validateContents(entitiesWithSelectedSpecification, lines);
             entitiesAndSpecificationsToUpdate = validationResult.entitiesAndSpecificationsToUpdate;
             if (validationResult.valid) {
@@ -1277,6 +1281,7 @@
                 if (validationResult.hasValidationFailuresForCvls) {
                     showElement('doReimport');
                 } else {
+                    $('.isNoneValidCvl').hide();
                     hideElement('doReimport');
                 }
             }
@@ -1287,7 +1292,7 @@
                 valid: true,
                 validationFailureHtml: "",
                 entitiesAndSpecificationsToUpdate: [],
-                hasValidationFailuresForCvls: false
+                hasValidationFailuresForCvls: true
             };
             var headerVerification = verifyHeader(entitiesWithSelectedSpecification, lines[0], lines[1][0]);
             if (headerVerification.message.length == 0) {
@@ -1311,21 +1316,20 @@
 
                             var entityAndSpecificationToUpdate = generateSpecificationValue(entityId, headerVerification.specificationFieldsMatchingHeader, line);
                             result.entitiesAndSpecificationsToUpdate.push(entityAndSpecificationToUpdate);
-                            result.hasValidationFailuresForCvls |= entityAndSpecificationToUpdate.hasValidationFailuresForCvls;
                             if (entityAndSpecificationToUpdate.validationFailures.length > 0) {
                                 validationFailureListItems += _.map(entityAndSpecificationToUpdate.validationFailures,
                                     function (failure) {
                                         return '<li>' + failure + '</li>';
                                     }).join('');
                             }
-                            if (result.hasValidationFailuresForCvls) {
-                                showElement('doReimport');
-                            } else {
-                                hideElement('doReimport');
-                            }
 
                             if (validationFailureListItems.length > 0) {
-                                result.validationFailureHtml += '<li>Entity ' + entityId + validationAdditionalEntityInformation(entity);
+                                if (entityAndSpecificationToUpdate.hasValidationFailuresForCvls) {
+                                    result.validationFailureHtml += '<li class="isNoneValidCvl">';
+                                } else {
+                                    result.validationFailureHtml += '<li>';
+                                }
+                                result.validationFailureHtml += 'Entity ' + entityId + validationAdditionalEntityInformation(entity);
                                 result.validationFailureHtml += '<ul>';
                                 result.validationFailureHtml += validationFailureListItems;
                                 result.validationFailureHtml += '</ul>';
@@ -1337,8 +1341,14 @@
                     }
                 });
 
-                console.log('entitiesAndSpecificationsToUpdate');
-                console.log(result.entitiesAndSpecificationsToUpdate);
+                result.entitiesAndSpecificationsToUpdate.forEach(function (entityAndSpecificationToUpdate, index) {
+                    if (entityAndSpecificationToUpdate.validationFailures.length) {
+                        result.hasValidationFailuresForCvls &= entityAndSpecificationToUpdate.hasValidationFailuresForCvls;
+                    }
+                });
+
+                console.log('validateContents result');
+                console.log(result);
             } else {
                 result.validationFailureHtml += 'Imported file does not have a correct header. ' + headerVerification.message;
             }
