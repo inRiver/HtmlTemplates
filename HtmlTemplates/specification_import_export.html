@@ -1431,10 +1431,10 @@
                     result.push(cvlKey);
                 }
             });
-            return result.join(', ');
+            return result.join(',');
         }
 
-        function renderDropDownsForFaultyCvls(entityId, specFieldId) {
+        function renderDropDownsForFaultyCvls(entityId, specFieldId, cvlKeysToValidate) {
             var specificationField = specificationFieldsArray.find(function (specField) {
                 return specField.id == specFieldId;
             });
@@ -1446,7 +1446,11 @@
 
             var dropdownHtml = "<select class='correctCVLSelect' value='" + entityId + ":" + specFieldId + "'" + multiple + ">";
             for (var i = 0; i < cvl.values.length; i++) {
-                dropdownHtml += "<option value='" + cvl.values[i].key + "'>" + cvl.values[i].key + "</option>";
+                var isSelected = cvlKeysToValidate.find(function(cvlKey) {
+                    return cvlKey == cvl.values[i].key;
+                }) !== undefined;
+                var selectedHtml = isSelected ? " selected" : "";
+                dropdownHtml += "<option value='" + cvl.values[i].key + "'" + selectedHtml + ">" + cvl.values[i].key + "</option>";
             }
             dropdownHtml += "</select>";
 
@@ -1502,7 +1506,7 @@
                     var potentialErrorString = validateCvlKeys(cvlKeysToValidate, specifications[i].specificationField.cvlId);
                     if (potentialErrorString.length > 0) {
                         result.validationFailures.push("Column <b>" + specifications[i].specificationField.name[language] + "</b> of type <b>" + specifications[i].specificationField.dataType + "</b> has invalid values: <b>'" + potentialErrorString + "'</b><br/>" +
-                            "<span style='vertical-align:top;'>Select correct value: </span><span>" + renderDropDownsForFaultyCvls(entityId, specifications[i].specificationField.id) + "</span>");
+                            "<span style='vertical-align:top;'>Select correct value: </span><span>" + renderDropDownsForFaultyCvls(entityId, specifications[i].specificationField.id, cvlKeysToValidate) + "</span>");
                         result.hasValidationFailuresForCvls = true;
                     }
                 } else if (specifications[i].specificationField.dataType === "LocaleString") {
