@@ -1,24 +1,35 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-    <!--    
-        Version: 1.0.0.2
+    <!--
+                Version: 1.0.0.3
 
-        Revision History:
-        1.0.0.2
-        =============================================
-        - Added a top node, Common Shared, to the work area tree.
-        - A "Check all" checkbox has been added to 
+                Revision History:
+                1.0.0.3
+                =============================================
+                - In the tree private work areas can now be seen. This functionality is based on an CVL where the key
+                  is the API Key and the value is the users email. This CVL is identified by the variable apiKeyUserCVL
+                  (= "ApiKeyUser").  If user is not in the CVL there is a fallback user to rely on.
+                - Once a work area is selected the entities of that are is downloaded. Prior to this change there
+                  was a "busy" circle rotating. Now the drop down of Specification Templates updated dynamically
+                  thus enable the user to work with the mass update while downloading.
+                - As long as the entities of the work area is downloading it is not possible to do a mass update.
+                  The Mass Update button is disabled and while downloading a progress is shown.
 
-        1.0.0.1
-        =============================================
-        Bug correction: If a specification was chosen and fields had been selected and then the specification template was
-        changed to another the previously selected field remained. This bug is now fixed.
+                1.0.0.2
+                =============================================
+                - Added a top node, Common Shared, to the work area tree.
+                - A "Check all" checkbox has been added to
 
-        1.0
-        =============================================
-        First version. Containing mass update with no limitations.
-    -->
+                1.0.0.1
+                =============================================
+                Bug correction: If a specification was chosen and fields had been selected and then the specification template was
+                changed to another the previously selected field remained. This bug is now fixed.
+
+                1.0
+                =============================================
+                First version. Containing mass update with no limitations.
+                -->
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -124,10 +135,9 @@
             border-width: 2px;
         }
 
-        .buttonInvalidForInput {
+        .invalidForInput {
             cursor: not-allowed;
             pointer-events: none;
-            /*Button disabled - CSS color class*/
             color: #c0c0c0;
             background-color: #ffffff;
         }
@@ -334,8 +344,8 @@
     </script>
 
     <script type="text/javascript">
-        //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT
-        var fallbackApiKey = "145a024134fc97d14777edf0323c244f";
+        //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - START
+        var fallbackApiKey = "2eb0108ce0eefd1b959f3c0a96a27328";
         var apiKey = fallbackApiKey;
         var apiKeyUserCVL = "ApiKeyUser";
         var language = "en";
@@ -343,6 +353,7 @@
 
         var specificationTypeId = "Specification";
         var specificationTemplateChunkSize = 100;
+        //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - END
 
         var foundEntities;
         var workAreasArray;
@@ -355,6 +366,8 @@
         var showDataType = false;
         var specifications = new Object();
         var specificationMainNameField = 'SpecificationName';
+        var allEntriesValid = true;
+        var entitiesDownloadingCount = 0;
 
         window.onload = function () {
             fetchAllOutboundSpecificationLinkTypeIds();
@@ -373,14 +386,14 @@
 
         function setApiKeyToMatchUser() {
             if (hasTemplateContext()) {
-                getCvlValues(apiKeyUserCVL);
+                getCvlValues(apiKeyUserCVL, false);
 
-                var cvlForApiKeyUser = allCvls.find(function(cvl) {
+                var cvlForApiKeyUser = allCvls.find(function (cvl) {
                     return cvl.id === apiKeyUserCVL;
                 });
                 if (cvlForApiKeyUser !== undefined && cvlForApiKeyUser !== null) {
                     console.log(cvlForApiKeyUser.values);
-                    var apiKeyUser = cvlForApiKeyUser.values.find(function(keyValue) {
+                    var apiKeyUser = cvlForApiKeyUser.values.find(function (keyValue) {
                         return keyValue.value === templateContext.userEmail;
                     });
                     if (apiKeyUser !== undefined && apiKeyUser !== null) {
@@ -396,7 +409,7 @@
                 dataType: "json",
                 contentType: 'application/json',
                 headers: {
-                    'X-inRiver-APIKey': fallbackApiKey,
+                    'X-inRiver-APIKey': apiKey,
                     'Accept': 'application/json',
                     'Accept-Language': language
                 },
@@ -408,7 +421,7 @@
         }
 
         function fetchWorkAreas() {
-            $.getJSON(buildAjaxSettings("workareafoldertree?includeCreatedByMe=true"), function(workAreaFolderTree) {
+            $.getJSON(buildAjaxSettings("workareafoldertree?includeCreatedByMe=true"), function (workAreaFolderTree) {
                 console.log("Success");
                 console.log(workAreaFolderTree);
                 workAreasArray = workAreaFolderTree;
@@ -472,7 +485,7 @@
         }
 
         function fetchAllCvls() {
-            $.getJSON(buildAjaxSettings("model/cvls", false), function(cvls) {
+            $.getJSON(buildAjaxSettings("model/cvls", false), function (cvls) {
                 cvls.forEach(function (item, index) {
                     var cvlWithValues = item;
                     cvlWithValues.values = [];
@@ -504,14 +517,14 @@
             });
         }
 
-        function getCvlValues(cvlId) {
+        function getCvlValues(cvlId, asyncOperation) {
             var cvl = allCvls.find(function (cvl) {
                 return cvl.id === cvlId;
             });
             console.log("Found cvl for cvlId = " + cvlId);
             console.log(cvl);
             if (cvl.values.length === 0) {
-                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values"), function (cvlValues) {
+                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
                     cvl.values = cvlValues;
                 });
             }
@@ -535,11 +548,13 @@
 
                 hideSelectFields();
 
+                foundEntities = [];
+                entitiesDownloadingCount = entities.entityIds.length;
+                allEntriesValid = true;
 
                 specifications = new Object();
                 var chunkedFoundEntityIds = chunk(entities.entityIds, specificationTemplateChunkSize);
 
-                foundEntities = [];
                 console.log('chunkedFoundEntityIds');
                 console.log(chunkedFoundEntityIds);
 
@@ -547,7 +562,6 @@
                 specificationnamesselectorhtml += '<option value="none">-</option>';
                 specificationnamesselectorhtml += "</select>";
                 document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
-
 
                 forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
             });
@@ -568,28 +582,31 @@
                     "objects": "FieldValues"
                 }
             });
+
             return $.post(ajaxSettings, function (entities) {
 
-                    foundEntities = foundEntities.concat(entities);
+                foundEntities = foundEntities.concat(entities);
 
-                    console.log("Success fetching entities");
-                    console.log(entities);
+                console.log("Success fetching entities");
+                console.log(entities);
 
-                    for (var i = 0; i < entities.length; i++) {
-                        for (var j = 0; j < entities[i].outbound.length; j++) {
-                            var specification = entities[i].outbound[j];
-                            if (!(specification.entityId in specifications)) {
-                                var specificationEntry = new Object();
-                                specificationEntry.specificationName = specification.fieldValues.find(field => field.fieldTypeId === specificationMainNameField).value;
-                                specificationEntry.entityCount = 1;
-                                specifications[specification.entityId] = specificationEntry;
-                            } else {
-                                specifications[specification.entityId].entityCount++;
-                            }
+                for (var i = 0; i < entities.length; i++) {
+                    for (var j = 0; j < entities[i].outbound.length; j++) {
+                        var specification = entities[i].outbound[j];
+                        if (!(specification.entityId in specifications)) {
+                            var specificationEntry = new Object();
+                            specificationEntry.specificationName = specification.fieldValues.find(field => field.fieldTypeId === specificationMainNameField).value;
+                            specificationEntry.entityCount = 1;
+                            specifications[specification.entityId] = specificationEntry;
+                        } else {
+                            specifications[specification.entityId].entityCount++;
                         }
                     }
+                }
 
-                    fillSpecificationNames(specifications);
+                fillSpecificationNames(specifications);
+
+                doMassUpdateButtonEnabled();
             });
         }
 
@@ -681,7 +698,7 @@
 
                 specificationFieldsArray.forEach(function (item, index) {
                     if (item.dataType === "CVL") {
-                        getCvlValues(item.cvlId);
+                        getCvlValues(item.cvlId, true);
                     }
                 });
 
@@ -929,25 +946,43 @@
         }
 
         function validate() {
-            var isValid = true;
+            allEntriesValid = true;
             $('input[type=text]').each(function (index, input) {
                 var regExp = $(this).attr('pattern');
                 var value = $(this).val();
                 if (regExp !== undefined && value !== undefined && regExp.length > 0 && value.length > 0) {
                     if (!value.match(regExp)) {
-                        isValid = false;
+                        allEntriesValid = false;
                     }
                 }
             });
 
-            console.log('validate, isValid = ' + isValid);
+            console.log('validate, isValid = ' + allEntriesValid);
 
-            if (!isValid) {
-                console.log('addClass("buttonInvalidForInput")');
-                $('#doMassUpdate').addClass('buttonInvalidForInput');
+            doMassUpdateButtonEnabled();
+        }
+
+        function doMassUpdateButtonEnabled() {
+            var buttonEnabled = (foundEntities.length + specificationTemplateChunkSize) > entitiesDownloadingCount && allEntriesValid;
+
+            if (!buttonEnabled) {
+                document.getElementById("downloadProgress").innerHTML =
+                    "Download progress: " + Math.round(foundEntities.length / entitiesDownloadingCount * 100) + " %";
+
             } else {
-                console.log('removeClass("buttonInvalidForInput")');
-                $('#doMassUpdate').removeClass('buttonInvalidForInput');
+                document.getElementById("downloadProgress").innerHTML = "";
+            }
+
+            buttonAvailability('doMassUpdate', buttonEnabled);
+        }
+
+        function buttonAvailability(buttonId, enabled) {
+            if (!enabled) {
+                console.log('addClass("invalidForInput")');
+                $('#' + buttonId).addClass('invalidForInput');
+            } else {
+                console.log('removeClass("invalidForInput")');
+                $('#' + buttonId).removeClass('invalidForInput');
             }
         }
 
@@ -1079,21 +1114,21 @@
                 var ajaxSettings = buildAjaxSettings("entities/" + entity.entityId + "/specificationvalues");
                 ajaxSettings.data = JSON.stringify(specificationValuesForUpdate);
                 ajaxSettings.type = "PUT";
-                ajaxSettings.error = function(xhr) {
+                ajaxSettings.error = function (xhr) {
                     failedEntityIds.push(entity.entityId);
 
                     var failedHtml = "Failed entity id(s): ";
                     var divider = "";
-                    failedEntityIds.forEach(function(id, index) {
+                    failedEntityIds.forEach(function (id, index) {
                         failedHtml += divider + id;
                         divider = ',';
                     });
 
                     document.getElementById("failed").innerHTML = failedHtml;
                 };
-                ajaxSettings.complete = function() {
+                ajaxSettings.complete = function () {
                     entityUpdateCount++;
-                    document.getElementById("progress").innerHTML =
+                    document.getElementById("massUpdateProgress").innerHTML =
                         "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
                 };
 
@@ -1146,6 +1181,7 @@
         </div>
         <div id="doMassUpdateButtonDiv" class="row">
             <div class="col-lg-2">
+                <p id="downloadProgress"></p>
                 <button onclick="doMassUpdate()" class="btn btn-primary" id="doMassUpdate">Do Mass Update</button>
             </div>
             <div class="col-lg-10">
@@ -1154,7 +1190,7 @@
                         <p id="totalItems"></p>
                     </div>
                     <div class="col-lg-4">
-                        <p id="progress"></p>
+                        <p id="massUpdateProgress"></p>
                     </div>
                 </div>
                 <div class="row">

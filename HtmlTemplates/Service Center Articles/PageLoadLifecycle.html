@@ -1,0 +1,96 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Page Load Lifecycle</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script>
+        var apiKey = "2eb0108ce0eefd1b959f3c0a96a27328";
+        var language = "en";
+        var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+        var entityId = {{inriver:id}};
+
+        window.onInRiverTemplateReady = function () {
+            console.log("window.onInRiverTemplateReady called");
+
+            $("#open-entity-editor").attr("inriver-entity-editor", entityId);
+            $("#parent-editor").attr("inriver-entity-editor", -1);
+
+            loadFirstParent();
+        }
+
+        $(document).ready(function () {
+            console.log("document.ready called");
+        });
+
+        window.onload = function () {
+            console.log("window.onload called");
+        }
+
+        function loadFirstParent() {
+            $.ajax({
+                dataType: "json",
+                contentType: 'application/json',
+                headers: {
+                    'X-inRiver-APIKey': apiKey,
+                    'Accept': 'application/json',
+                    'Accept-Language': language
+                },
+                url: baseUrl + "entities/" + entityId + "/links?linkDirection=inbound",
+                processData: true
+            }).done(function (result, textStatus, jqXHR) {
+                console.log("Get links result:");
+                console.log(result);
+                if (result.length > 0) {
+                    $.ajax({
+                        dataType: "json",
+                        contentType: 'application/json',
+                        headers: {
+                            'X-inRiver-APIKey': apiKey,
+                            'Accept': 'application/json',
+                            'Accept-Language': language
+                        },
+                        url: baseUrl + "entities/" + result[0].sourceEntityId + "/summary",
+                        processData: true
+                    }).done(function(result, textStatus, jqXHR) {
+                        console.log("Get entity summary result:");
+                        console.log(result);
+                        $('#name').html(result.displayName);
+                        $('#description').html(result.displayDescription);
+                        $('#type').html(result.entityTypeId);
+                        $('#image').attr('src', result.resourceUrl);
+                        $("#parent-editor").attr('inriver-entity-editor', result.id);
+                    });
+                }
+            });
+
+        }
+
+    </script>
+</head>
+<body>
+    <span>{{inriver:displayName}}</span>
+    <span id="open-entity-editor"></span>
+    <h2>First parent</h2>
+    <table>
+        <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Type</th>
+            <th></th>
+            <th></th>
+        </tr>
+        <tr>
+            <td id="name"></td>
+            <td id="description"></td>
+            <td id="type"></td>
+            <td>
+                <span id="parent-editor"></span>
+            </td>
+            <td>
+                <img id="image" style='max-width: 64px; float: right; border-style: solid; border-width: 10px; border-color: white;'/>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>
