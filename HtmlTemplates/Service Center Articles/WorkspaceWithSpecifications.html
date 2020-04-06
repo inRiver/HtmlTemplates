@@ -83,7 +83,7 @@
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
-        var chunkSize = 200;
+        var specificationTemplateChunkSize = 200;
 
         var foundEntities;
         var workAreasArray;
@@ -191,12 +191,12 @@
                 hideSelectFields();
 
                 specifications = new Object();
-                var chunkedFoundEntityIds = chunk(entities.entityIds, chunkSize);
+                var chunkedFoundEntityIds = chunk(entities.entityIds, specificationTemplateChunkSize);
 
                 foundEntities = [];
                 let process = forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
                 process.done(results => {
-                    fillspecificationnames(specifications);
+                    fillSpecificationNames(specifications);
                 });
             });
         }
@@ -294,7 +294,7 @@
             return masterDeferred.promise();
         }
 
-        function fillspecificationnames(specifications) {
+        function fillSpecificationNames(specifications) {
             var specificationnamesselectorhtml = '<select id="specificationnameselector" onchange="displayspecificationfields(this.value)">';
             specificationnamesselectorhtml += '<option value="none">-</option>';
             for (var key in specifications) {
