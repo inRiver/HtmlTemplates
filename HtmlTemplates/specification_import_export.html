@@ -157,6 +157,8 @@
     </style>
 
     <script>
+        var maxConcurrentRequests = 6;
+
         //BELOW IS CODE TO THROTTLE THE NUMBER OF AJAX REQUEST SO WE DO NOT GET STOPPED BY THE API.
 
         /**
@@ -183,13 +185,13 @@
          */
         (function ($) {
             $.ajaxthrottle = function (options) {
-
+                console.log("Throttler called");
                 var timeout,
 
                     settings = $.extend({
                         numRequestsPerTimePeriod: 0,
                         timePeriod: 0,
-                        maxConcurrent: 9
+                        maxConcurrent: maxConcurrentRequests
                     }, options),
 
                     time = function () {
@@ -318,11 +320,11 @@
             };
         }(jQuery));
 
-        //SETUP THROTTLE SO WE MAX DO 9 CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
+        //SETUP THROTTLE SO WE MAX DO 'maxConcurrentRequests' CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
         var throttle = $.ajaxthrottle({
             numRequestsPerTimePeriod: 0,
             timePeriod: 0,
-            maxConcurrent: 9
+            maxConcurrent: maxConcurrentRequests
         });
         //t.ajax(args);
     </script>
@@ -567,10 +569,8 @@
 
         function buttonAvailability(buttonId, enabled) {
             if (!enabled) {
-                console.log('addClass("invalidForInput")');
                 $('#' + buttonId).addClass('invalidForInput');
             } else {
-                console.log('removeClass("invalidForInput")');
                 $('#' + buttonId).removeClass('invalidForInput');
             }
         }
@@ -646,12 +646,14 @@
             var cvl = allCvls.find(function (cvl) {
                 return cvl.id === cvlId;
             });
-            console.log("Found cvl for cvlId = " + cvlId);
-            console.log(cvl);
-            if (cvl.values.length === 0) {
-                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
-                    cvl.values = cvlValues;
-                });
+            if (cvl !== undefined) {
+                console.log("Found cvl for cvlId = " + cvlId);
+                console.log(cvl);
+                if (cvl.values.length === 0) {
+                    $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
+                        cvl.values = cvlValues;
+                    });
+                }
             }
         }
 
@@ -688,7 +690,7 @@
                 specificationnamesselectorhtml += "</select>";
                 document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
 
-                forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
+                forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, maxConcurrentRequests);
             });
         }
 
@@ -1234,11 +1236,15 @@
         function processImport(csv) {
             var allTextLines = csv.split(/\r\n|\n/);
             var lines = [];
+            var nbrOfColumns = allTextLines[0].split(csvDivider).length;
             for (var i = 0; i < allTextLines.length; i++) {
                 var data = allTextLines[i].split(csvDivider);
                 var tarr = [];
                 for (var j = 0; j < data.length; j++) {
                     tarr.push(TidyUpField(data[j]));
+                }
+                for (var j = 0; j < nbrOfColumns - data.length; j++) {
+                    tarr.push("");
                 }
                 lines.push(tarr);
             }
@@ -1359,24 +1365,22 @@
                 ajaxSettings.type = "PUT";
                 ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
                 ajaxSettings.error = function (xhr) {
-                    failedEntityIds.push(entityAndSpecifications.entityId);
-
+                    failedEntityIds.push({entityId: entityAndSpecifications.entityId, errorMessage: xhr.responseText});
                     $('#importFailureRow').show();
                     $('#doReimport').hide();
-                    var failedHtml = "Failed entity id(s): ";
-                    var divider = "";
+                    var failedHtml = 'Failed entity id(s): <ul>';
                     failedEntityIds.forEach(function (id, index) {
-                        failedHtml += divider + id;
-                        divider = ',';
+                        failedHtml += '<li><b>' + id.entityId + '</b>: ' + id.errorMessage + '</li>';
                     });
 
+                    failedHtml += '</ul>';
                     document.getElementById("failed").innerHTML = failedHtml;
                 };
                 ajaxSettings.complete = function () {
                     entityUpdateCount++;
                     document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
                 }
-                $.ajax(ajaxSettings);
+                throttle.ajax(ajaxSettings);
             });
 
         }
@@ -1477,6 +1481,7 @@
             var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: [], hasValidationFailuresForCvls: false };
             var valuePartLine = line.slice(predefinedColumns.length);
 
+            console.log(line);
             console.log(valuePartLine);
 
             var specificationValue;
@@ -1582,6 +1587,7 @@
                 }
             }
 
+
             var specificationName = specifications[selectedSpecificationId].specificationName;
             for (var j = predefinedColumns.length; j < header.length; j++) {
                 var specNameInHeaderParts = header[j].split('_');
@@ -1589,7 +1595,9 @@
                     return spec.name[language] === specNameInHeaderParts[0];
                 });
                 if (specificationField === undefined) {
-                    result.message = 'Column "' + header[j] + '" is not part of the specification selected (= ' + specificationName + ')';
+                    console.log(language);
+                    console.log(specificationFieldsArray);
+                    result.message = 'Column "' + header[j] + '" is not part of the specification selected, which is = ' + specificationName;
                 } else {
                     var columnLanguage = "";
                     if (specNameInHeaderParts.length > 1) {
