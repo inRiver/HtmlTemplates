@@ -2,34 +2,41 @@
 <html>
 <head>
     <!--
-                Version: 1.0.0.3
+        Version: 1.0.0.4
 
-                Revision History:
-                1.0.0.3
-                =============================================
-                - In the tree private work areas can now be seen. This functionality is based on an CVL where the key
-                  is the API Key and the value is the users email. This CVL is identified by the variable apiKeyUserCVL
-                  (= "ApiKeyUser").  If user is not in the CVL there is a fallback user to rely on.
-                - Once a work area is selected the entities of that are is downloaded. Prior to this change there
-                  was a "busy" circle rotating. Now the drop down of Specification Templates updated dynamically
-                  thus enable the user to work with the mass update while downloading.
-                - As long as the entities of the work area is downloading it is not possible to do a mass update.
-                  The Mass Update button is disabled and while downloading a progress is shown.
+        Revision History:
+        1.0.0.4
+        =============================================
+        - If an error occurs in the put of the specification, then present the error message.
+        - The throttling mechanism is now used when putting specifications.
+        - Version is presented on the page.
 
-                1.0.0.2
-                =============================================
-                - Added a top node, Common Shared, to the work area tree.
-                - A "Check all" checkbox has been added to
+        Revision History:
+        1.0.0.3
+        =============================================
+        - In the tree private work areas can now be seen. This functionality is based on an CVL where the key
+          is the API Key and the value is the users email. This CVL is identified by the variable apiKeyUserCVL
+          (= "ApiKeyUser").  If user is not in the CVL there is a fallback user to rely on.
+        - Once a work area is selected the entities of that are is downloaded. Prior to this change there
+          was a "busy" circle rotating. Now the drop down of Specification Templates updated dynamically
+          thus enable the user to work with the mass update while downloading.
+        - As long as the entities of the work area is downloading it is not possible to do a mass update.
+          The Mass Update button is disabled and while downloading a progress is shown.
 
-                1.0.0.1
-                =============================================
-                Bug correction: If a specification was chosen and fields had been selected and then the specification template was
-                changed to another the previously selected field remained. This bug is now fixed.
+        1.0.0.2
+        =============================================
+        - Added a top node, Common Shared, to the work area tree.
+        - A "Check all" checkbox has been added to
 
-                1.0
-                =============================================
-                First version. Containing mass update with no limitations.
-                -->
+        1.0.0.1
+        =============================================
+        Bug correction: If a specification was chosen and fields had been selected and then the specification template was
+        changed to another the previously selected field remained. This bug is now fixed.
+
+        1.0
+        =============================================
+        First version. Containing mass update with no limitations.
+    -->
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -173,6 +180,8 @@
     </style>
 
     <script>
+        var maxConcurrentRequests = 10;
+
         //BELOW IS CODE TO THROTTLE THE NUMBER OF AJAX REQUEST SO WE DO NOT GET STOPPED BY THE API.
 
         /**
@@ -205,7 +214,7 @@
                     settings = $.extend({
                         numRequestsPerTimePeriod: 0,
                         timePeriod: 0,
-                        maxConcurrent: 9
+                        maxConcurrent: maxConcurrentRequests
                     }, options),
 
                     time = function () {
@@ -338,9 +347,9 @@
         var throttle = $.ajaxthrottle({
             numRequestsPerTimePeriod: 0,
             timePeriod: 0,
-            maxConcurrent: 9
+            maxConcurrent: maxConcurrentRequests
         });
-        //t.ajax(args);
+        //throttle.ajax(args);
     </script>
 
     <script type="text/javascript">
@@ -523,10 +532,23 @@
             });
             console.log("Found cvl for cvlId = " + cvlId);
             console.log(cvl);
-            if (cvl.values.length === 0) {
-                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
-                    cvl.values = cvlValues;
-                });
+            if (cvl !== undefined) {
+                console.log("Found cvl for cvlId = " + cvlId);
+                console.log(cvl);
+                if (cvl.values.length === 0) {
+                    if (asyncOperation) {
+                        var ajaxSettings = buildAjaxSettings("model/cvls/" + cvlId + "/values");
+                        ajaxSettings.type = "GET";
+                        ajaxSettings.complete = function(response) {
+                            cvl.values = response.responseJSON;
+                        }
+                        throttle.ajax(ajaxSettings);
+                    } else {
+                        $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
+                            cvl.values = cvlValues;
+                        });
+                    }
+                }
             }
         }
 
@@ -563,7 +585,7 @@
                 specificationnamesselectorhtml += "</select>";
                 document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
 
-                forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
+                forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, maxConcurrentRequests);
             });
         }
 
@@ -846,9 +868,9 @@
 
             var newValueFieldEditHtml = "<td>";
             if (showDataType) {
-                newValueFieldEditHtml += specificationField.name.en + " (" + specificationField.dataType + ")";
+                newValueFieldEditHtml += specificationField.name[language] + " (" + specificationField.dataType + ")";
             } else {
-                newValueFieldEditHtml += specificationField.name.en;
+                newValueFieldEditHtml += specificationField.name[language];
             }
             if (specificationField.unit !== null && specificationField.unit.length > 0) {
                 newValueFieldEditHtml += "&nbsp;(" + specificationField.unit + ")";
@@ -893,7 +915,7 @@
                 if (cvl.dataType === "String") {
                     cvlHtml += '<li><input type="' + inputType + '" value="' + item.key + '" name="' + specificationFieldTypeId + '"/>&nbsp;' + item.value + '</li>';
                 } else {
-                    cvlHtml += '<li><input type="' + inputType + '" value="' + item.key + '" name="' + specificationFieldTypeId + '"/>&nbsp;' + item.value.en + '</li>';
+                    cvlHtml += '<li><input type="' + inputType + '" value="' + item.key + '" name="' + specificationFieldTypeId + '"/>&nbsp;' + item.value[language] + '</li>';
                 }
             });
             cvlHtml += "</ul>";
@@ -978,10 +1000,8 @@
 
         function buttonAvailability(buttonId, enabled) {
             if (!enabled) {
-                console.log('addClass("invalidForInput")');
                 $('#' + buttonId).addClass('invalidForInput');
             } else {
-                console.log('removeClass("invalidForInput")');
                 $('#' + buttonId).removeClass('invalidForInput');
             }
         }
@@ -1115,15 +1135,14 @@
                 ajaxSettings.data = JSON.stringify(specificationValuesForUpdate);
                 ajaxSettings.type = "PUT";
                 ajaxSettings.error = function (xhr) {
-                    failedEntityIds.push(entity.entityId);
+                    failedEntityIds.push({ entityId: entityAndSpecifications.entityId, errorMessage: xhr.responseText });
 
-                    var failedHtml = "Failed entity id(s): ";
-                    var divider = "";
+                    var failedHtml = 'Failed entity id(s): <ul>';
                     failedEntityIds.forEach(function (id, index) {
-                        failedHtml += divider + id;
-                        divider = ',';
+                        failedHtml += '<li><b>' + id.entityId + '</b>: ' + id.errorMessage + '</li>';
                     });
 
+                    failedHtml += '</ul>';
                     document.getElementById("failed").innerHTML = failedHtml;
                 };
                 ajaxSettings.complete = function () {
@@ -1204,6 +1223,8 @@
             <div class="col-lg-12">
                 <br />
                 <br />
+                <br />
+                <p>Version: 1.0.0.4</p>
                 <br />
             </div>
         </div>
