@@ -2,42 +2,48 @@
 <html>
 <head>
 <!--
-        Version: 1.0.0.4
+Version: 1.0.1.0
 
-        Revision History:
-        1.0.0.4
-        =============================================
-        - If an error occurs in the put of the specification, then present the error message.
-        - The throttling mechanism is now used when putting specifications.
-        - Version is presented on the page.
+Revision History:
+1.0.1.0
+=============================================
+- Reduced the risk of getting Http 429 by ensuring maximum concurrent threads = 10 
+- Functionality for dropdowns in Excel failed when a field was of type LocaleString.
+- Added retry whe fetching data
 
-        1.0.0.3
-        =============================================
-        - In the tree private work areas can now be seen for the logged in user. This functionality is based on an CVL where the key
-          is the API Key and the value is the users email. This CVL is identified by the variable apiKeyUserCVL
-          (= "ApiKeyUser"). If user is not in the CVL there is a fallback user to rely on.
-        - Once a work area is selected the entities of that are is downloaded. Prior to this change there
-          was a "busy" circle rotating. Now the drop down of Specification Templates updated dynamically
-          thus enable the user to work with the import/export while downloading..
-        - As long as the entities of the work area is downloading it is not possible to do a mass update.
-          The import/export-buttons is disabled and while downloading a progress is shown.
-        - Exported document now has drop downs i Excel document (for the .xlxs file format) for CVLs.
-        - Added the possibility to add a more detailed description in an validation of the file that
-          is about to be imported (if wrong).
+1.0.0.4
+=============================================
+- If an error occurs in the put of the specification, then present the error message.
+- The throttling mechanism is now used when putting specifications.
+- Version is presented on the page.
 
-        1.0.0.2
-        =============================================
-        - Added a top node, Common Shared, to the work area tree.
+1.0.0.3
+=============================================
+- In the tree private work areas can now be seen for the logged in user. This functionality is based on an CVL where the key
+  is the API Key and the value is the users email. This CVL is identified by the variable apiKeyUserCVL
+  (= "ApiKeyUser"). If user is not in the CVL there is a fallback user to rely on.
+- Once a work area is selected the entities of that are is downloaded. Prior to this change there
+  was a "busy" circle rotating. Now the drop down of Specification Templates updated dynamically
+  thus enable the user to work with the import/export while downloading..
+- As long as the entities of the work area is downloading it is not possible to do a mass update.
+  The import/export-buttons is disabled and while downloading a progress is shown.
+- Exported document now has drop downs i Excel document (for the .xlxs file format) for CVLs.
+- Added the possibility to add a more detailed description in an validation of the file that
+  is about to be imported (if wrong).
 
-        1.0.0.1
-        =============================================
-        Bug correction: If a specification was chosen and fields had been selected and then the specification template was
-        changed to another the previously selected field remained. This bug is now fixed.
+1.0.0.2
+=============================================
+- Added a top node, Common Shared, to the work area tree.
 
-        1.0
-        =============================================
-        First version. Containing mass update with no limitations.
-    -->
+1.0.0.1
+=============================================
+Bug correction: If a specification was chosen and fields had been selected and then the specification template was
+changed to another the previously selected field remained. This bug is now fixed.
+
+1.0
+=============================================
+First version. Containing mass update with no limitations.
+-->
 
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -162,178 +168,178 @@
         }
     </style>
 
-<script>
-    // maxConcurrentRequests should be half of the maximum number of concurrent requests (=10) that the inRiver Rest Api can handle.
-    var maxConcurrentRequests = 5; 
+    <script>
+        // maxConcurrentRequests should be half of the maximum number of concurrent requests (=10) that the inRiver Rest Api can handle.
+        var maxConcurrentRequests = 5;
 
-    //BELOW IS CODE TO THROTTLE THE NUMBER OF AJAX REQUEST SO WE DO NOT GET STOPPED BY THE API.
+        //BELOW IS CODE TO THROTTLE THE NUMBER OF AJAX REQUEST SO WE DO NOT GET STOPPED BY THE API.
 
-    /**
-     * ajaxthrottle.js
-     *
-     * Usage:
-     *
-     *     var t = $.ajaxthrottle({
-     *        numRequestsPerTimePeriod : N,
-     *        timePeriod               : P,
-     *        maxConcurrent            : M
-     *     });
-     *
-     *     t.ajax(args);
-     *
-     * This is just like calling $.ajax(args), except that requests are throttled
-     * so that no more than N are initiated in any time period of P milliseconds,
-     * and no more than M concurrent (outstanding at the same time) requests are allowed.
-     * If N or P is 0, there is no time period based constraint, and if M is 0, there
-     * is no constraint on the number of concurrent requests.
-     *
-     * Mark Phillips <mphillip@unca.edu>
-     * Thu Dec 20 11:04:19 2012
-     */
-    (function ($) {
-        $.ajaxthrottle = function (options) {
-            var timeout,
+        /**
+         * ajaxthrottle.js
+         *
+         * Usage:
+         *
+         *     var t = $.ajaxthrottle({
+         *        numRequestsPerTimePeriod : N,
+         *        timePeriod               : P,
+         *        maxConcurrent            : M
+         *     });
+         *
+         *     t.ajax(args);
+         *
+         * This is just like calling $.ajax(args), except that requests are throttled
+         * so that no more than N are initiated in any time period of P milliseconds,
+         * and no more than M concurrent (outstanding at the same time) requests are allowed.
+         * If N or P is 0, there is no time period based constraint, and if M is 0, there
+         * is no constraint on the number of concurrent requests.
+         *
+         * Mark Phillips <mphillip@unca.edu>
+         * Thu Dec 20 11:04:19 2012
+         */
+        (function ($) {
+            $.ajaxthrottle = function (options) {
+                var timeout,
 
-                settings = $.extend({
-                    numRequestsPerTimePeriod: 0,
-                    timePeriod: 0,
-                    maxConcurrent: maxConcurrentRequests
-                }, options),
+                    settings = $.extend({
+                        numRequestsPerTimePeriod: 0,
+                        timePeriod: 0,
+                        maxConcurrent: maxConcurrentRequests
+                    }, options),
 
-                time = function () {
-                    return (new Date()).getTime();
-                },
+                    time = function () {
+                        return (new Date()).getTime();
+                    },
 
-                // Array of outstanding requests; these are requests that have
-                // been initiated with a call to $.ajax() but that have not
-                // completed yet.  Each entry in this array is an object of the form
-                //    {
-                //         arguments: the original arguments list passed to .ajax()
-                //              time: the time this request was passed to $.ajax()
-                //          deferred: the jQuery deferred object for this request
-                //    }
-                outstanding_reqs = [],
+                    // Array of outstanding requests; these are requests that have
+                    // been initiated with a call to $.ajax() but that have not
+                    // completed yet.  Each entry in this array is an object of the form
+                    //    {
+                    //         arguments: the original arguments list passed to .ajax()
+                    //              time: the time this request was passed to $.ajax()
+                    //          deferred: the jQuery deferred object for this request
+                    //    }
+                    outstanding_reqs = [],
 
-                // Array of initiated requests; each entry in this array
-                // is an object just like the ones in the outstanding_reqs
-                // array above, but this array keeps track of all
-                // requests, regardless of whether they have completed.
-                // This list is used to keep track of how many requests
-                // have been initiated in settings.timePeriod.  Requests
-                // that are older than settings.timePeriod milliseconds
-                // get removed from this list when it is purged.
-                initiated_reqs = [],
+                    // Array of initiated requests; each entry in this array
+                    // is an object just like the ones in the outstanding_reqs
+                    // array above, but this array keeps track of all
+                    // requests, regardless of whether they have completed.
+                    // This list is used to keep track of how many requests
+                    // have been initiated in settings.timePeriod.  Requests
+                    // that are older than settings.timePeriod milliseconds
+                    // get removed from this list when it is purged.
+                    initiated_reqs = [],
 
-                // Array of requests waiting to be initiated
-                waiting_reqs = [],
+                    // Array of requests waiting to be initiated
+                    waiting_reqs = [],
 
-                // Purge the initiated reqs list so that it doesn't contain any
-                // reqs from more than settings.timePeriod ms ago.  Return the
-                // amount of time that needs to be waited until the oldest remaining
-                // (after purging) req in the list will be settings.timePeriod ms old.
-                // Do all of this relative to the passed in 'now' value.
-                purge_initiated_reqs = function (now) {
-                    if (settings.timePeriod >= 0) {
-                        while ((initiated_reqs.length > 0)
+                    // Purge the initiated reqs list so that it doesn't contain any
+                    // reqs from more than settings.timePeriod ms ago.  Return the
+                    // amount of time that needs to be waited until the oldest remaining
+                    // (after purging) req in the list will be settings.timePeriod ms old.
+                    // Do all of this relative to the passed in 'now' value.
+                    purge_initiated_reqs = function (now) {
+                        if (settings.timePeriod >= 0) {
+                            while ((initiated_reqs.length > 0)
+                                &&
+                                (initiated_reqs[0].time + settings.timePeriod - now <= 0)) {
+                                initiated_reqs.shift();
+                            }
+                            if (initiated_reqs.length > 0) {
+                                return initiated_reqs[0].time + settings.timePeriod - now;
+                            }
+                        }
+                        return 0;
+                    },
+
+                    // remove a req from the outstanding_reqs list
+                    remove_outstanding_req = function (obj) {
+                        $.each(outstanding_reqs, function (i) {
+                            if (outstanding_reqs[i] === obj) {
+                                outstanding_reqs.splice(i, 1);
+                                return false;
+                            }
+                            return true;
+                        });
+                    },
+
+                    // Initiate the next request on the waiting list, unless we need to wait
+                    // till some time has passed or some outstanding requests have completed.
+                    process_waiting = function () {
+                        var now = time(),
+                            delay, req, deferred;
+
+                        if (waiting_reqs.length <= 0) {
+                            return;
+                        }
+
+                        delay = purge_initiated_reqs(now);
+
+                        // If we have a timePeriod constraint, and the max number of allowed
+                        // requests have gone out in that time period, arrange to wait for
+                        // 'delay' ms
+                        if ((settings.numRequestsPerTimePeriod > 0) && (settings.timePeriod > 0)
                             &&
-                            (initiated_reqs[0].time + settings.timePeriod - now <= 0)) {
-                            initiated_reqs.shift();
+                            (delay > 0)
+                            &&
+                            (initiated_reqs.length >= settings.numRequestsPerTimePeriod)) {
+                            // clear any existing timeout first, because this one will
+                            // require waiting till after it would finish anyway
+                            if (timeout !== undefined) {
+                                clearTimeout(timeout);
+                            }
+                            timeout = setTimeout(function () {
+                                timeout = undefined;
+                                process_waiting();
+                            }, delay);
+                            return;
                         }
-                        if (initiated_reqs.length > 0) {
-                            return initiated_reqs[0].time + settings.timePeriod - now;
+
+                        // If the max number of allowed requests is outstanding, do nothing;
+                        // process_waiting() will get called again when a request completes.
+                        if ((settings.maxConcurrent > 0)
+                            &&
+                            (outstanding_reqs.length >= settings.maxConcurrent)) {
+                            return;
                         }
-                    }
-                    return 0;
-                },
 
-                // remove a req from the outstanding_reqs list
-                remove_outstanding_req = function (obj) {
-                    $.each(outstanding_reqs, function (i) {
-                        if (outstanding_reqs[i] === obj) {
-                            outstanding_reqs.splice(i, 1);
-                            return false;
-                        }
-                        return true;
-                    });
-                },
-
-                // Initiate the next request on the waiting list, unless we need to wait
-                // till some time has passed or some outstanding requests have completed.
-                process_waiting = function () {
-                    var now = time(),
-                        delay, req, deferred;
-
-                    if (waiting_reqs.length <= 0) {
-                        return;
-                    }
-
-                    delay = purge_initiated_reqs(now);
-
-                    // If we have a timePeriod constraint, and the max number of allowed
-                    // requests have gone out in that time period, arrange to wait for
-                    // 'delay' ms
-                    if ((settings.numRequestsPerTimePeriod > 0) && (settings.timePeriod > 0)
-                        &&
-                        (delay > 0)
-                        &&
-                        (initiated_reqs.length >= settings.numRequestsPerTimePeriod)) {
-                        // clear any existing timeout first, because this one will
-                        // require waiting till after it would finish anyway
-                        if (timeout !== undefined) {
-                            clearTimeout(timeout);
-                        }
-                        timeout = setTimeout(function () {
-                            timeout = undefined;
+                        // If we make it to here, then it's OK to initiate the next
+                        // request in the waiting list
+                        req = waiting_reqs.shift();
+                        req.time = time();
+                        initiated_reqs.push(req);
+                        outstanding_reqs.push(req);
+                        $.ajax.apply($, req.arguments).done(function () {
+                            req.deferred.resolve.apply(req.deferred, arguments);
+                        }).fail(function () {
+                            req.deferred.reject.apply(req.deferred, arguments);
+                        }).always(function () {
+                            remove_outstanding_req(req);
                             process_waiting();
-                        }, delay);
-                        return;
-                    }
+                        });
 
-                    // If the max number of allowed requests is outstanding, do nothing;
-                    // process_waiting() will get called again when a request completes.
-                    if ((settings.maxConcurrent > 0)
-                        &&
-                        (outstanding_reqs.length >= settings.maxConcurrent)) {
-                        return;
                     }
+                    ;
 
-                    // If we make it to here, then it's OK to initiate the next
-                    // request in the waiting list
-                    req = waiting_reqs.shift();
-                    req.time = time();
-                    initiated_reqs.push(req);
-                    outstanding_reqs.push(req);
-                    $.ajax.apply($, req.arguments).done(function () {
-                        req.deferred.resolve.apply(req.deferred, arguments);
-                    }).fail(function () {
-                        req.deferred.reject.apply(req.deferred, arguments);
-                    }).always(function () {
-                        remove_outstanding_req(req);
+                return {
+                    ajax: function () {
+                        var deferred = $.Deferred();
+                        waiting_reqs.push({ arguments: arguments, deferred: deferred });
                         process_waiting();
-                    });
-
-                }
-                ;
-
-            return {
-                ajax: function () {
-                    var deferred = $.Deferred();
-                    waiting_reqs.push({ arguments: arguments, deferred: deferred });
-                    process_waiting();
-                    return deferred.promise();
-                }
+                        return deferred.promise();
+                    }
+                };
             };
-        };
-    }(jQuery));
+        }(jQuery));
 
-    //SETUP THROTTLE SO WE MAX DO 'maxConcurrentRequests' CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
-    var throttle = $.ajaxthrottle({
-        numRequestsPerTimePeriod: 0,
-        timePeriod: 0,
-        maxConcurrent: maxConcurrentRequests
-    });
-    //throttle.ajax(args);
-</script>
+        //SETUP THROTTLE SO WE MAX DO 'maxConcurrentRequests' CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
+        var throttle = $.ajaxthrottle({
+            numRequestsPerTimePeriod: 0,
+            timePeriod: 0,
+            maxConcurrent: maxConcurrentRequests
+        });
+        //throttle.ajax(args);
+    </script>
 
     <script type="text/javascript">
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - START
@@ -403,6 +409,7 @@
             return "";
         };
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - END
+
         var foundEntities;
         var workAreasArray;
         var specificationFieldsArray;
@@ -444,7 +451,10 @@
             'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE',
             'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL', 'BM', 'BN', 'BO', 'BP', 'BQ', 'BR', 'BS', 'BT', 'BU', 'BV', 'BW',
             'BX', 'BY', 'BZ', 'CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG', 'CH', 'CI', 'CJ', 'CK', 'CL', 'CM', 'CN', 'CO',
-            'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX', 'CY', 'CZ'
+            'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX', 'CY', 'CZ', 'DA', 'DB', 'DC', 'DD', 'DE', 'DF', 'DG',
+            'DH', 'DI', 'DJ', 'DK', 'DL', 'DM', 'DN', 'DO', 'DP', 'DQ', 'DR', 'DS', 'DT', 'DU', 'DV', 'DW', 'DX', 'DY',
+            'DZ', 'EA', 'EB', 'EC', 'ED', 'EE', 'EF', 'EG', 'EH', 'EI', 'EJ', 'EK', 'EL', 'EM', 'EN', 'EO', 'EP', 'EQ',
+            'ER', 'ES', 'ET', 'EU', 'EV', 'EW', 'EX', 'EY', 'EZ', 'FA', 'FB', 'FC', 'FD', 'FE', 'FF', 'FG', 'FH', 'FI'
         ];
 
         window.onload = function () {
@@ -658,7 +668,7 @@
                     if (asyncOperation) {
                         var ajaxSettings = buildAjaxSettings("model/cvls/" + cvlId + "/values");
                         ajaxSettings.type = "GET";
-                        ajaxSettings.complete = function(response) {
+                        ajaxSettings.complete = function (response) {
                             cvl.values = response.responseJSON;
                         }
                         throttle.ajax(ajaxSettings);
@@ -728,7 +738,7 @@
         }
 
         function doPostWithRetries(ajaxSettings, concatEntitiesAndAssignSpecifications, retryCount) {
-            var xhr = $.post(ajaxSettings, concatEntitiesAndAssignSpecifications).fail(function() {
+            var xhr = $.post(ajaxSettings, concatEntitiesAndAssignSpecifications).fail(function () {
                 console.log("Post failed. Remaining Retry count = " + retryCount);
                 if (retryCount > 0) {
                     return doPostWithRetries(ajaxSettings, concatEntitiesAndAssignSpecifications, retryCount--);
@@ -1017,8 +1027,7 @@
                         usedCvls.push("");
                     });
                 }
-                else
-                {
+                else {
                     usedCvls.push("");
                 }
             });
@@ -1127,13 +1136,13 @@
                     dataSheet.addRow(line);
                 });
 
-                var i;
+                var i = 0, j = 0;
                 try {
                     console.log(data[0].length);
                     for (i = 0; i < data[0].length; i++) {
                         var cvlId = usedCvls[i];
-                        if (cvlId !== undefined && cvlId.length > 0) {
-                            for (var j = 0; j < data.length - 1; j++) {
+                        if (cvlId.length > 0) {
+                            for (j = 0; j < data.length - 1; j++) {
                                 var cellId = excelTabs[i + 1] + (j + 2);
                                 var validationExpression = cvlValidationProperties.find(function (prop) {
                                     return prop.cvlId === cvlId;
@@ -1147,8 +1156,8 @@
                         }
                     }
                 } catch (e) {
-                    console.log("Exception caught: Will not produce drop down selection from line " + i);
-                } 
+                    console.log("Exception caught: Will not produce drop down selection from row " + j + ' and column ' + i);
+                }
 
                 workbook.xlsx.writeBuffer()
                     .then(buffer => saveAs(new Blob([buffer]), filename + '.' + exportFormat))
@@ -1757,7 +1766,7 @@
             <br />
             <br />
             <br />
-            <p>Version: 1.0.0.4</p>
+            <p>Version: 1.0.1.0</p>
             <br />
         </div>
     </div>

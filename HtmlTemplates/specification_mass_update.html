@@ -180,7 +180,8 @@
     </style>
 
     <script>
-        var maxConcurrentRequests = 10;
+        // maxConcurrentRequests should be half of the maximum number of concurrent requests (=10) that the inRiver Rest Api can handle.
+        var maxConcurrentRequests = 5;
 
         //BELOW IS CODE TO THROTTLE THE NUMBER OF AJAX REQUEST SO WE DO NOT GET STOPPED BY THE API.
 
