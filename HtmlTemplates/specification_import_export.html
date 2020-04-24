@@ -10,6 +10,7 @@ Revision History:
 - Reduced the risk of getting Http 429 by ensuring maximum concurrent threads = 10 
 - Functionality for dropdowns in Excel failed when a field was of type LocaleString.
 - Added retry whe fetching data
+- Hindering selection of work area if download is in progress
 
 1.0.0.4
 =============================================
@@ -343,15 +344,15 @@ First version. Containing mass update with no limitations.
 
     <script type="text/javascript">
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - START
-        var fallbackApiKey = "61c2686a4267e45e32f6f8dd300532cd";
+        var fallbackApiKey = "145a024134fc97d14777edf0323c244f";
         var apiKey = fallbackApiKey;
         var apiKeyUserCVL = "ApiKeyUser";
-        var language = "en-US";
-        var baseUrl = "https://apiuse.productmarketingcloud.com/api/v1.0.0/";
-
+        var language = "en";
+        var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+ 
         var specificationTypeId = "Specification";
         var specificationTemplateChunkSize = 100;
-
+ 
         var predefinedColumns = [
             {
                 columnName: function (entity) {
@@ -368,14 +369,14 @@ First version. Containing mass update with no limitations.
                             return "ProductNumber";
                         }
                         else if (entity.summary.entityTypeId === "Item") {
-                            return "SKUNumber";
+                            return "ItemNumber";
                         }
                     }
                     return "-";
                 },
                 exportOperation: function (entity) {
                     var field = entity.fields.find(function (field) {
-                        return field.fieldTypeId === "SKUSKUNumber" || field.fieldTypeId === "ProductNumber";
+                        return field.fieldTypeId === "ItemNumber" || field.fieldTypeId === "ProductNumber";
                     });
                     if (field !== undefined) {
                         return field.displayValue;
@@ -392,7 +393,7 @@ First version. Containing mass update with no limitations.
                 }
             }
         ];
-
+ 
         var validationAdditionalEntityInformation = function (entity) {
             var itemNumberField = entity.fields.find(function (field) {
                 return field.fieldTypeId === "ItemNumber";
@@ -426,6 +427,7 @@ First version. Containing mass update with no limitations.
         var specificationNameColumnIndex;
         var entitiesDownloadingCount = 0;
         var entitiesAndSpecificationsToUpdate;
+        var downloadStarted = false;
 
         var validations = {
             "Integer": function (value) {
@@ -580,6 +582,7 @@ First version. Containing mass update with no limitations.
                         alert('Download in progress. Try later.');
                         return;
                     }
+                    downloadStarted = true;
                     console.log(data.node.li_attr.value);
                     fetchSpecifications(data.node.li_attr.value);
                 });
@@ -753,6 +756,7 @@ First version. Containing mass update with no limitations.
 
         function concatEntitiesAndAssignSpecifications(entities) {
             foundEntities = foundEntities.concat(entities);
+            downloadStarted = false;
 
             // console.log("Success fetching entities");
             // console.log(entities);
@@ -779,7 +783,7 @@ First version. Containing mass update with no limitations.
         }
 
         function downloadInProgress() {
-            return (foundEntities.length + specificationTemplateChunkSize) <= entitiesDownloadingCount;
+            return downloadStarted || (foundEntities.length + specificationTemplateChunkSize) <= entitiesDownloadingCount;
         }
 
         function doImportExportButtonEnabled(buttonId, progressId) {
