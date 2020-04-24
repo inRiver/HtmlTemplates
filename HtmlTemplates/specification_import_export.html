@@ -343,11 +343,11 @@ First version. Containing mass update with no limitations.
 
     <script type="text/javascript">
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - START
-        var fallbackApiKey = "145a024134fc97d14777edf0323c244f";
+        var fallbackApiKey = "61c2686a4267e45e32f6f8dd300532cd";
         var apiKey = fallbackApiKey;
         var apiKeyUserCVL = "ApiKeyUser";
-        var language = "en";
-        var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+        var language = "en-US";
+        var baseUrl = "https://apiuse.productmarketingcloud.com/api/v1.0.0/";
 
         var specificationTypeId = "Specification";
         var specificationTemplateChunkSize = 100;
@@ -368,14 +368,14 @@ First version. Containing mass update with no limitations.
                             return "ProductNumber";
                         }
                         else if (entity.summary.entityTypeId === "Item") {
-                            return "ItemNumber";
+                            return "SKUNumber";
                         }
                     }
                     return "-";
                 },
                 exportOperation: function (entity) {
                     var field = entity.fields.find(function (field) {
-                        return field.fieldTypeId === "ItemNumber" || field.fieldTypeId === "ProductNumber";
+                        return field.fieldTypeId === "SKUSKUNumber" || field.fieldTypeId === "ProductNumber";
                     });
                     if (field !== undefined) {
                         return field.displayValue;
@@ -410,7 +410,7 @@ First version. Containing mass update with no limitations.
         };
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - END
 
-        var foundEntities;
+        var foundEntities = [];
         var workAreasArray;
         var specificationFieldsArray;
         var allCvls = [];
@@ -576,6 +576,10 @@ First version. Containing mass update with no limitations.
                 $('#workareaselector').jstree("open_node", $('#topLevelCommonShared'));
 
                 $('#workareaselector').on("changed.jstree", function (e, data) {
+                    if (downloadInProgress()) {
+                        alert('Download in progress. Try later.');
+                        return;
+                    }
                     console.log(data.node.li_attr.value);
                     fetchSpecifications(data.node.li_attr.value);
                 });
@@ -774,8 +778,12 @@ First version. Containing mass update with no limitations.
             doImportExportButtonEnabled('doExport', 'downloadProgressExport');
         }
 
+        function downloadInProgress() {
+            return (foundEntities.length + specificationTemplateChunkSize) <= entitiesDownloadingCount;
+        }
+
         function doImportExportButtonEnabled(buttonId, progressId) {
-            var buttonEnabled = (foundEntities.length + specificationTemplateChunkSize) > entitiesDownloadingCount;
+            var buttonEnabled = !downloadInProgress();
 
             if (!buttonEnabled) {
                 document.getElementById(progressId).innerHTML =
