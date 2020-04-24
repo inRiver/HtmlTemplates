@@ -434,7 +434,7 @@ First version. Containing mass update with no limitations.
                 return exp;
             },
             "Double": function (value) {
-                var exp = /^([1-9]\d*(\.|\,)\d*|0?(\.|\,)\d*[1-9]\d*|[1-9]\d*)$/gm.test(value);
+                var exp = /^([0-9]\d*(\.|\,)\d*|0?(\.|\,)\d*[0-9]\d*|[0-9]\d*)$/gm.test(value);
                 console.log("Double: " + value + ", exp: " + exp);
                 return exp;
             },
