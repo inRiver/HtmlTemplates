@@ -429,19 +429,19 @@ First version. Containing mass update with no limitations.
 
         var validations = {
             "Integer": function (value) {
-                var exp = /^([+-]?[0-9]*)$/.test(value);
-                console.log("Integer: " + value + ", exp: " + exp);
-                return exp;
+                var valid = !isNaN(parseInt(value));
+                console.log('ParseInt: value = ' + value + ', valid = ' + valid);
+                return valid;
             },
             "Double": function (value) {
-                var exp = /^([0-9]\d*(\.|\,)\d*|0?(\.|\,)\d*[0-9]\d*|[0-9]\d*)$/gm.test(value);
-                console.log("Double: " + value + ", exp: " + exp);
-                return exp;
+                var valid = !isNaN(parseFloat(value));
+                console.log('ParseFloat: value = ' + value + ', valid = ' + valid);
+                return valid;
             },
             "DateTime": function (value) {
-                var exp = /^(\d{4})(-(\d{2}))??(-(\d{2}))??(T(\d{2}):(\d{2})(:(\d{2}))??(\.(\d+))??(([\+\-]{1}\d{2}:\d{2})|Z)??)??$/.test(value);
-                console.log("DateTime: " + value + ", exp: " + exp);
-                return exp;
+                var valid = /^(\d{4})(-(\d{2}))??(-(\d{2}))??(T(\d{2}):(\d{2})(:(\d{2}))??(\.(\d+))??(([\+\-]{1}\d{2}:\d{2})|Z)??)??$/.test(value);
+                console.log("DateTime: " + value + ", valid: " + valid);
+                return valid;
             }
         };
 
