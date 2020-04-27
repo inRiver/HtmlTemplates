@@ -1065,7 +1065,7 @@ First version. Containing mass update with no limitations.
                     } else if (field.specificationDataType === "DateTime") {
                         fieldValue = new Date(field.value).toISOString();
                     } else if (field.specificationDataType === "CVL" && field.isMultiValue) {
-                        fieldValue = fieldValue != null ? fieldValue.join(cvlSeparator) : [];
+                        fieldValue = fieldValue != null ? fieldValue.join(cvlSeparator) : "";
                     }
                     else if (field.unit.length > 0 || field.specificationDataType === "CVL") {
                         fieldValue = field.value;
