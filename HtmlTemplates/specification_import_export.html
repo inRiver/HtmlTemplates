@@ -2,38 +2,51 @@
 <html>
 <head>
 <!--
-    Version: 1.0.0.3
+Version: 1.0.1.0
 
-    Revision History:
-    1.0.0.3
-    =============================================
-    - In the tree private work areas can now be seen for the logged in user. This functionality is based on an CVL where the key
-      is the API Key and the value is the users email. This CVL is identified by the variable apiKeyUserCVL
-      (= "ApiKeyUser"). If user is not in the CVL there is a fallback user to rely on.
-    - Once a work area is selected the entities of that are is downloaded. Prior to this change there
-      was a "busy" circle rotating. Now the drop down of Specification Templates updated dynamically
-      thus enable the user to work with the import/export while downloading..
-    - As long as the entities of the work area is downloading it is not possible to do a mass update.
-      The import/export-buttons is disabled and while downloading a progress is shown.
-    - Exported document now has drop downs i Excel document (for the .xlxs file format) for CVLs.
-    - Added the possibility to add a more detailed description in an validation of the file that
-      is about to be imported (if wrong).
+Revision History:
+1.0.1.0
+=============================================
+- Reduced the risk of getting Http 429 by ensuring maximum concurrent threads = 10 
+- Functionality for dropdowns in Excel failed when a field was of type LocaleString.
+- Added retry whe fetching data
+- Hindering selection of work area if download is in progress
 
-    1.0.0.2
-    =============================================
-    - Added a top node, Common Shared, to the work area tree.
+1.0.0.4
+=============================================
+- If an error occurs in the put of the specification, then present the error message.
+- The throttling mechanism is now used when putting specifications.
+- Version is presented on the page.
 
-    1.0.0.1
-    =============================================
-    Bug correction: If a specification was chosen and fields had been selected and then the specification template was
-    changed to another the previously selected field remained. This bug is now fixed.
+1.0.0.3
+=============================================
+- In the tree private work areas can now be seen for the logged in user. This functionality is based on an CVL where the key
+  is the API Key and the value is the users email. This CVL is identified by the variable apiKeyUserCVL
+  (= "ApiKeyUser"). If user is not in the CVL there is a fallback user to rely on.
+- Once a work area is selected the entities of that are is downloaded. Prior to this change there
+  was a "busy" circle rotating. Now the drop down of Specification Templates updated dynamically
+  thus enable the user to work with the import/export while downloading..
+- As long as the entities of the work area is downloading it is not possible to do a mass update.
+  The import/export-buttons is disabled and while downloading a progress is shown.
+- Exported document now has drop downs i Excel document (for the .xlxs file format) for CVLs.
+- Added the possibility to add a more detailed description in an validation of the file that
+  is about to be imported (if wrong).
 
-    1.0
-    =============================================
-    First version. Containing mass update with no limitations.
+1.0.0.2
+=============================================
+- Added a top node, Common Shared, to the work area tree.
+
+1.0.0.1
+=============================================
+Bug correction: If a specification was chosen and fields had been selected and then the specification template was
+changed to another the previously selected field remained. This bug is now fixed.
+
+1.0
+=============================================
+First version. Containing mass update with no limitations.
 -->
 
-<meta charset="utf-8" />
+    <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <title>Specification Import Export</title>
@@ -157,6 +170,9 @@
     </style>
 
     <script>
+        // maxConcurrentRequests should be half of the maximum number of concurrent requests (=10) that the inRiver Rest Api can handle.
+        var maxConcurrentRequests = 5;
+
         //BELOW IS CODE TO THROTTLE THE NUMBER OF AJAX REQUEST SO WE DO NOT GET STOPPED BY THE API.
 
         /**
@@ -183,13 +199,12 @@
          */
         (function ($) {
             $.ajaxthrottle = function (options) {
-
                 var timeout,
 
                     settings = $.extend({
                         numRequestsPerTimePeriod: 0,
                         timePeriod: 0,
-                        maxConcurrent: 9
+                        maxConcurrent: maxConcurrentRequests
                     }, options),
 
                     time = function () {
@@ -318,13 +333,13 @@
             };
         }(jQuery));
 
-        //SETUP THROTTLE SO WE MAX DO 9 CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
+        //SETUP THROTTLE SO WE MAX DO 'maxConcurrentRequests' CONCURRENT REQUEST ELSE WE WILL GET BLOCKED BY THE REST API.
         var throttle = $.ajaxthrottle({
             numRequestsPerTimePeriod: 0,
             timePeriod: 0,
-            maxConcurrent: 9
+            maxConcurrent: maxConcurrentRequests
         });
-        //t.ajax(args);
+        //throttle.ajax(args);
     </script>
 
     <script type="text/javascript">
@@ -334,10 +349,10 @@
         var apiKeyUserCVL = "ApiKeyUser";
         var language = "en";
         var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
-
+ 
         var specificationTypeId = "Specification";
         var specificationTemplateChunkSize = 100;
-
+ 
         var predefinedColumns = [
             {
                 columnName: function (entity) {
@@ -378,7 +393,7 @@
                 }
             }
         ];
-
+ 
         var validationAdditionalEntityInformation = function (entity) {
             var itemNumberField = entity.fields.find(function (field) {
                 return field.fieldTypeId === "ItemNumber";
@@ -396,7 +411,7 @@
         };
         //THIS NEED TO BE UPDATED FOR THE SPECIFIC ENVIRONMENT - END
 
-        var foundEntities;
+        var foundEntities = [];
         var workAreasArray;
         var specificationFieldsArray;
         var allCvls = [];
@@ -412,22 +427,23 @@
         var specificationNameColumnIndex;
         var entitiesDownloadingCount = 0;
         var entitiesAndSpecificationsToUpdate;
+        var downloadStarted = false;
 
         var validations = {
             "Integer": function (value) {
-                var exp = /^([+-]?[0-9]*)$/.test(value);
-                console.log("Integer: " + value + ", exp: " + exp);
-                return exp;
+                var valid = !isNaN(parseInt(value));
+                console.log('ParseInt: value = ' + value + ', valid = ' + valid);
+                return valid;
             },
             "Double": function (value) {
-                var exp = /^([1-9]\d*(\.|\,)\d*|0?(\.|\,)\d*[1-9]\d*|[1-9]\d*)$/gm.test(value);
-                console.log("Double: " + value + ", exp: " + exp);
-                return exp;
+                var valid = !isNaN(parseFloat(value));
+                console.log('ParseFloat: value = ' + value + ', valid = ' + valid);
+                return valid;
             },
             "DateTime": function (value) {
-                var exp = /^(\d{4})(-(\d{2}))??(-(\d{2}))??(T(\d{2}):(\d{2})(:(\d{2}))??(\.(\d+))??(([\+\-]{1}\d{2}:\d{2})|Z)??)??$/.test(value);
-                console.log("DateTime: " + value + ", exp: " + exp);
-                return exp;
+                var valid = /^(\d{4})(-(\d{2}))??(-(\d{2}))??(T(\d{2}):(\d{2})(:(\d{2}))??(\.(\d+))??(([\+\-]{1}\d{2}:\d{2})|Z)??)??$/.test(value);
+                console.log("DateTime: " + value + ", valid: " + valid);
+                return valid;
             }
         };
 
@@ -437,7 +453,10 @@
             'AN', 'AO', 'AP', 'AQ', 'AR', 'AS', 'AT', 'AU', 'AV', 'AW', 'AX', 'AY', 'AZ', 'BA', 'BB', 'BC', 'BD', 'BE',
             'BF', 'BG', 'BH', 'BI', 'BJ', 'BK', 'BL', 'BM', 'BN', 'BO', 'BP', 'BQ', 'BR', 'BS', 'BT', 'BU', 'BV', 'BW',
             'BX', 'BY', 'BZ', 'CA', 'CB', 'CC', 'CD', 'CE', 'CF', 'CG', 'CH', 'CI', 'CJ', 'CK', 'CL', 'CM', 'CN', 'CO',
-            'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX', 'CY', 'CZ'
+            'CP', 'CQ', 'CR', 'CS', 'CT', 'CU', 'CV', 'CW', 'CX', 'CY', 'CZ', 'DA', 'DB', 'DC', 'DD', 'DE', 'DF', 'DG',
+            'DH', 'DI', 'DJ', 'DK', 'DL', 'DM', 'DN', 'DO', 'DP', 'DQ', 'DR', 'DS', 'DT', 'DU', 'DV', 'DW', 'DX', 'DY',
+            'DZ', 'EA', 'EB', 'EC', 'ED', 'EE', 'EF', 'EG', 'EH', 'EI', 'EJ', 'EK', 'EL', 'EM', 'EN', 'EO', 'EP', 'EQ',
+            'ER', 'ES', 'ET', 'EU', 'EV', 'EW', 'EX', 'EY', 'EZ', 'FA', 'FB', 'FC', 'FD', 'FE', 'FF', 'FG', 'FH', 'FI'
         ];
 
         window.onload = function () {
@@ -559,6 +578,11 @@
                 $('#workareaselector').jstree("open_node", $('#topLevelCommonShared'));
 
                 $('#workareaselector').on("changed.jstree", function (e, data) {
+                    if (downloadInProgress()) {
+                        alert('Download in progress. Try later.');
+                        return;
+                    }
+                    downloadStarted = true;
                     console.log(data.node.li_attr.value);
                     fetchSpecifications(data.node.li_attr.value);
                 });
@@ -567,10 +591,8 @@
 
         function buttonAvailability(buttonId, enabled) {
             if (!enabled) {
-                console.log('addClass("invalidForInput")');
                 $('#' + buttonId).addClass('invalidForInput');
             } else {
-                console.log('removeClass("invalidForInput")');
                 $('#' + buttonId).removeClass('invalidForInput');
             }
         }
@@ -646,12 +668,23 @@
             var cvl = allCvls.find(function (cvl) {
                 return cvl.id === cvlId;
             });
-            console.log("Found cvl for cvlId = " + cvlId);
-            console.log(cvl);
-            if (cvl.values.length === 0) {
-                $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
-                    cvl.values = cvlValues;
-                });
+            if (cvl !== undefined) {
+                console.log("Found cvl for cvlId = " + cvlId);
+                console.log(cvl);
+                if (cvl.values.length === 0) {
+                    if (asyncOperation) {
+                        var ajaxSettings = buildAjaxSettings("model/cvls/" + cvlId + "/values");
+                        ajaxSettings.type = "GET";
+                        ajaxSettings.complete = function (response) {
+                            cvl.values = response.responseJSON;
+                        }
+                        throttle.ajax(ajaxSettings);
+                    } else {
+                        $.getJSON(buildAjaxSettings("model/cvls/" + cvlId + "/values", asyncOperation), function (cvlValues) {
+                            cvl.values = cvlValues;
+                        });
+                    }
+                }
             }
         }
 
@@ -688,7 +721,7 @@
                 specificationnamesselectorhtml += "</select>";
                 document.getElementById("specificationtemplateselection").innerHTML = specificationnamesselectorhtml;
 
-                forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, 10);
+                forEachParallel(chunkedFoundEntityIds, getSpecificationNamesForEntityIds, maxConcurrentRequests);
             });
         }
 
@@ -708,36 +741,53 @@
                 }
             });
 
-            return $.post(ajaxSettings, function (entities) {
-                foundEntities = foundEntities.concat(entities);
+            return doPostWithRetries(ajaxSettings, concatEntitiesAndAssignSpecifications, 3);
+        }
 
-                console.log("Success fetching entities");
-                console.log(entities);
+        function doPostWithRetries(ajaxSettings, concatEntitiesAndAssignSpecifications, retryCount) {
+            var xhr = $.post(ajaxSettings, concatEntitiesAndAssignSpecifications).fail(function () {
+                console.log("Post failed. Remaining Retry count = " + retryCount);
+                if (retryCount > 0) {
+                    return doPostWithRetries(ajaxSettings, concatEntitiesAndAssignSpecifications, retryCount--);
+                }
+            });
+            return xhr;
+        }
 
-                for (var i = 0; i < entities.length; i++) {
-                    for (var j = 0; j < entities[i].outbound.length; j++) {
-                        var specification = entities[i].outbound[j];
-                        if (!(specification.entityId in specifications)) {
-                            var specificationEntry = new Object();
-                            specificationEntry.specificationName = specification.fieldValues
-                                .find(field => field.fieldTypeId === specificationMainNameField).value;
-                            specificationEntry.entityCount = 1;
-                            specifications[specification.entityId] = specificationEntry;
-                        } else {
-                            specifications[specification.entityId].entityCount++;
-                        }
+        function concatEntitiesAndAssignSpecifications(entities) {
+            foundEntities = foundEntities.concat(entities);
+            downloadStarted = false;
+
+            // console.log("Success fetching entities");
+            // console.log(entities);
+
+            for (var i = 0; i < entities.length; i++) {
+                for (var j = 0; j < entities[i].outbound.length; j++) {
+                    var specification = entities[i].outbound[j];
+                    if (!(specification.entityId in specifications)) {
+                        var specificationEntry = new Object();
+                        specificationEntry.specificationName = specification.fieldValues
+                            .find(field => field.fieldTypeId === specificationMainNameField).value;
+                        specificationEntry.entityCount = 1;
+                        specifications[specification.entityId] = specificationEntry;
+                    } else {
+                        specifications[specification.entityId].entityCount++;
                     }
                 }
+            }
 
-                fillSpecificationNames(specifications);
+            fillSpecificationNames(specifications);
 
-                doImportExportButtonEnabled('doImport', 'downloadProgressImport');
-                doImportExportButtonEnabled('doExport', 'downloadProgressExport');
-            });
+            doImportExportButtonEnabled('doImport', 'downloadProgressImport');
+            doImportExportButtonEnabled('doExport', 'downloadProgressExport');
+        }
+
+        function downloadInProgress() {
+            return downloadStarted || (foundEntities.length + specificationTemplateChunkSize) <= entitiesDownloadingCount;
         }
 
         function doImportExportButtonEnabled(buttonId, progressId) {
-            var buttonEnabled = (foundEntities.length + specificationTemplateChunkSize) > entitiesDownloadingCount;
+            var buttonEnabled = !downloadInProgress();
 
             if (!buttonEnabled) {
                 document.getElementById(progressId).innerHTML =
@@ -984,7 +1034,12 @@
             specificationFields.forEach(function (spec, index) {
                 if (spec.cvlId && !spec.isMultiValue) {
                     usedCvls.push(spec.cvlId);
-                } else {
+                } else if (spec.dataType === "LocaleString") {
+                    allLanguages.forEach(function (language, index) {
+                        usedCvls.push("");
+                    });
+                }
+                else {
                     usedCvls.push("");
                 }
             });
@@ -1010,7 +1065,7 @@
                     } else if (field.specificationDataType === "DateTime") {
                         fieldValue = new Date(field.value).toISOString();
                     } else if (field.specificationDataType === "CVL" && field.isMultiValue) {
-                        fieldValue = fieldValue != null ? fieldValue.join(cvlSeparator) : [];
+                        fieldValue = fieldValue != null ? fieldValue.join(cvlSeparator) : "";
                     }
                     else if (field.unit.length > 0 || field.specificationDataType === "CVL") {
                         fieldValue = field.value;
@@ -1093,21 +1148,27 @@
                     dataSheet.addRow(line);
                 });
 
-                for (var i = 0; i < data[0].length; i++) {
-                    var cvlId = usedCvls[i];
-                    if (cvlId.length > 0) {
-                        for (var j = 0; j < data.length - 1; j++) {
-                            var cellId = excelTabs[i + 1] + (j + 2);
-                            var validationExpression = cvlValidationProperties.find(function (prop) {
-                                return prop.cvlId === cvlId;
-                            });
-                            dataSheet.getCell(cellId).dataValidation = {
-                                type: 'list',
-                                allowBlank: true,
-                                formulae: [validationExpression.validationExpression]
-                            };
+                var i = 0, j = 0;
+                try {
+                    console.log(data[0].length);
+                    for (i = 0; i < data[0].length; i++) {
+                        var cvlId = usedCvls[i];
+                        if (cvlId.length > 0) {
+                            for (j = 0; j < data.length - 1; j++) {
+                                var cellId = excelTabs[i + 1] + (j + 2);
+                                var validationExpression = cvlValidationProperties.find(function (prop) {
+                                    return prop.cvlId === cvlId;
+                                });
+                                dataSheet.getCell(cellId).dataValidation = {
+                                    type: 'list',
+                                    allowBlank: true,
+                                    formulae: [validationExpression.validationExpression]
+                                };
+                            }
                         }
                     }
+                } catch (e) {
+                    console.log("Exception caught: Will not produce drop down selection from row " + j + ' and column ' + i);
                 }
 
                 workbook.xlsx.writeBuffer()
@@ -1234,11 +1295,15 @@
         function processImport(csv) {
             var allTextLines = csv.split(/\r\n|\n/);
             var lines = [];
+            var nbrOfColumns = allTextLines[0].split(csvDivider).length;
             for (var i = 0; i < allTextLines.length; i++) {
                 var data = allTextLines[i].split(csvDivider);
                 var tarr = [];
                 for (var j = 0; j < data.length; j++) {
                     tarr.push(TidyUpField(data[j]));
+                }
+                for (var j = 0; j < nbrOfColumns - data.length; j++) {
+                    tarr.push("");
                 }
                 lines.push(tarr);
             }
@@ -1359,30 +1424,28 @@
                 ajaxSettings.type = "PUT";
                 ajaxSettings.data = JSON.stringify(entityAndSpecifications.specificationValuesForUpdate);
                 ajaxSettings.error = function (xhr) {
-                    failedEntityIds.push(entityAndSpecifications.entityId);
-
+                    failedEntityIds.push({ entityId: entityAndSpecifications.entityId, errorMessage: xhr.responseText });
                     $('#importFailureRow').show();
                     $('#doReimport').hide();
-                    var failedHtml = "Failed entity id(s): ";
-                    var divider = "";
+                    var failedHtml = 'Failed entity id(s): <ul>';
                     failedEntityIds.forEach(function (id, index) {
-                        failedHtml += divider + id;
-                        divider = ',';
+                        failedHtml += '<li><b>' + id.entityId + '</b>: ' + id.errorMessage + '</li>';
                     });
 
+                    failedHtml += '</ul>';
                     document.getElementById("failed").innerHTML = failedHtml;
                 };
                 ajaxSettings.complete = function () {
                     entityUpdateCount++;
                     document.getElementById("progress").innerHTML = "Progress: " + Math.round(entityUpdateCount / totalEntities * 100) + " %";
                 }
-                $.ajax(ajaxSettings);
+                throttle.ajax(ajaxSettings);
             });
 
         }
 
         function doReimport() {
-            $("#validationFailures .correctCVLSelect").each(function() {
+            $("#validationFailures .correctCVLSelect").each(function () {
                 var selectValues = $(this).attr("value").split(':');
                 var entityId = selectValues[0];
                 var specificationId = selectValues[1];
@@ -1390,16 +1453,16 @@
 
                 var cvlKeys = "";
                 var separator = "";
-                $(this).children("option:selected").each(function() {
+                $(this).children("option:selected").each(function () {
                     var cvlKey = $(this).attr("value");
                     console.log("cvlKey = " + cvlKey);
                     cvlKeys += separator + cvlKey;
                     separator = ",";
                 });
-                var spec = entitiesAndSpecificationsToUpdate.find(function(spec) {
+                var spec = entitiesAndSpecificationsToUpdate.find(function (spec) {
                     return spec.entityId == entityId;
                 });
-                var specValueForForUpdate = spec.specificationValuesForUpdate.find(function(specForUpdate) {
+                var specValueForForUpdate = spec.specificationValuesForUpdate.find(function (specForUpdate) {
                     return specForUpdate.specificationFieldTypeId == specificationId;
                 });
                 specValueForForUpdate.value = isMultiSelectCvl ? cvlKeys.split(separator) : cvlKeys;
@@ -1446,7 +1509,7 @@
 
             var dropdownHtml = "<select class='correctCVLSelect' value='" + entityId + ":" + specFieldId + "'" + multiple + ">";
             for (var i = 0; i < cvl.values.length; i++) {
-                var isSelected = cvlKeysToValidate.find(function(cvlKey) {
+                var isSelected = cvlKeysToValidate.find(function (cvlKey) {
                     return cvlKey == cvl.values[i].key;
                 }) !== undefined;
                 var selectedHtml = isSelected ? " selected" : "";
@@ -1477,6 +1540,7 @@
             var result = { entityId: entityId, specificationValuesForUpdate: [], validationFailures: [], hasValidationFailuresForCvls: false };
             var valuePartLine = line.slice(predefinedColumns.length);
 
+            console.log(line);
             console.log(valuePartLine);
 
             var specificationValue;
@@ -1582,6 +1646,7 @@
                 }
             }
 
+
             var specificationName = specifications[selectedSpecificationId].specificationName;
             for (var j = predefinedColumns.length; j < header.length; j++) {
                 var specNameInHeaderParts = header[j].split('_');
@@ -1589,7 +1654,9 @@
                     return spec.name[language] === specNameInHeaderParts[0];
                 });
                 if (specificationField === undefined) {
-                    result.message = 'Column "' + header[j] + '" is not part of the specification selected (= ' + specificationName + ')';
+                    console.log(language);
+                    console.log(specificationFieldsArray);
+                    result.message = 'Column "' + header[j] + '" is not part of the specification selected, which is = ' + specificationName;
                 } else {
                     var columnLanguage = "";
                     if (specNameInHeaderParts.length > 1) {
@@ -1710,6 +1777,8 @@
         <div class="row">
             <br />
             <br />
+            <br />
+            <p>Version: 1.0.1.0</p>
             <br />
         </div>
     </div>
