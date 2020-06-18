@@ -1,0 +1,79 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>CVL Editor</title>
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+</head>
+<body class="container mt-4">
+
+    <div id="app">
+        <div class="row d-flex mb-3 align-items-center"
+             v-for="cvl in cvls">
+            <div class="col-4">
+                {{cvl.id}}
+            </div>
+            <div class="col-4">
+                {{cvl.dataType}}
+            </div>
+            <div class="col-4">
+                <button class="btn btn-info">Edit</button>
+                <button class="btn btn-info">Delete</button>
+            </div>
+        </div>
+    </div>
+
+<script src="https://code.jquery.com/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.6/umd/popper.min.js" integrity="sha384-wHAiFfRlMFy6i5SRaxvfOCifBUQy1xHdJ/yoi7FRNXMRBu5WHdZYu1hA6ZOblgut" crossorigin="anonymous"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/js/bootstrap.min.js" integrity="sha384-B0UglyR+jN6CkvvICOB2joaf5I4l3gm9GU6Hc1og6Ls7i6U/mkkaduKaBhlAXv9k" crossorigin="anonymous"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+
+<script>
+    var fallbackApiKey = "2eb0108ce0eefd1b959f3c0a96a27328";
+    var apiKey = fallbackApiKey;
+    var language = "en";
+    var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+
+    var app = new Vue({
+        el: "#app",
+        data: {
+            cvls: []
+        },
+        mounted: function () {
+            this.fetchAllCvls();
+        },
+        methods: {
+            fetchAllCvls: function () {
+                $.getJSON(buildAjaxSettings("model/cvls", false), function (cvls) {
+                    cvls.forEach(function (item, index) {
+                        var cvlWithValues = item;
+                        cvlWithValues.values = [];
+                        this.cvls.push(cvlWithValues);
+                    });
+                });
+            }
+        }
+    });
+
+    function buildAjaxSettings(restOperation, asyncOperation = true) {
+        var ajaxSettings = {
+            dataType: "json",
+            contentType: 'application/json',
+            headers: {
+                'X-inRiver-APIKey': apiKey,
+                'Accept': 'application/json',
+                'Accept-Language': language
+            },
+            url: baseUrl + restOperation,
+            processData: true,
+            async: asyncOperation
+        };
+        return ajaxSettings;
+    }
+
+</script>
+
+</body>
+</html>
