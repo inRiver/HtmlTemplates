@@ -7,31 +7,38 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
 </head>
 <body class="container mt-4">
-
     <div id="app">
         <div v-if="mode=='cvlListing'">
-            <div class="row d-flex mb-3 align-items-center"
-                 v-for="cvl in allCvls"
-                 v-on:click="cvlValueEdit(cvl)">
-                <div class="col-4">
-                    {{cvl.id}}
-                </div>
-                <div class="col-4">
-                    {{cvl.dataType}}
-                </div>
-                <div class="col-4">
-                    <button class="btn btn-info">Edit</button>
-                    <button class="btn btn-info">Delete</button>
-                </div>
-                <hr style="width: 100%; text-align: left; margin-left: 0">
-            </div>
+            <table class="table table-bordered table-hover table-sm">
+                <thead class="thead-light">
+                    <tr>
+                        <th class="col-xs-3">Id</th>
+                        <th class="col-xs-2">Data Type</th>
+                        <th class="col-xs-3"></th>
+                    </tr>
+                </thead>
+                <tbody v-for="cvl in allCvls">
+                    <tr v-on:click="cvlValueEdit(cvl)">
+                        <td>
+                            {{cvl.id}}
+                        </td>
+                        <td>
+                            {{cvl.dataType}}
+                        </td>
+                        <td>
+                            <button class="btn btn-info">Edit</button>
+                            <button class="btn btn-info">Delete</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
         <div v-if="mode=='cvlEditLocaleString'">
             <table></table>
         </div>
         <div v-if="mode=='cvlEditString'">
-            <table>
-                <thead>
+            <table class="table table-bordered table-hover table-sm">
+                <thead class="thead-light">
                     <tr>
                         <th class="col-xs-3">Key</th>
                         <th class="col-xs-2">Index</th>
@@ -39,7 +46,7 @@
                         <th class="col-xs-3"></th>
                     </tr>
                 </thead>
-                <tbody v-for="cvlValue in currentCvl">
+                <tbody v-for="cvlValue in currentCvl.values">
                     <tr>
                         <td>
                             {{cvlValue.key}}
@@ -93,14 +100,10 @@
                         });
                     });
                 },
-                fetchCvlValues: function(cvl) {
-                    var self = this;
-                    $.getJSON(buildAjaxSettings("model/cvls/" + cvl.id + "/values", false), function (cvlValues) {
-                        cvl.values = cvlValues;
-                    });
-                },
-                cvlValueEdit: function(cvl) {
+                cvlValueEdit: function (cvl) {
+                    console.log(cvl);
                     fetchCvlValues(cvl);
+                    console.log(cvl);
                     if (cvl.dataType === "LocaleString") {
                         this.mode = "cvlEditLocaleString";
                     }
@@ -111,6 +114,12 @@
                 }
             }
         });
+
+        function fetchCvlValues(cvl) {
+            $.getJSON(buildAjaxSettings("model/cvls/" + cvl.id + "/values", false), function (cvlValues) {
+                cvl.values = cvlValues;
+            });
+        };
 
         function buildAjaxSettings(restOperation, asyncOperation = true) {
             var ajaxSettings = {
