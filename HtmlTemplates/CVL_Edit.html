@@ -32,7 +32,7 @@
                         <td>
                             <div v-if="!cvl.editing">{{cvl.dataType}}</div>
                             <div v-if="cvl.editing">
-                                <select v-on:change="this.currentCvl.dataType=this.value">
+                                <select v-model="currentCvl.dataType">
                                     <option>-</option>
                                     <option>String</option>
                                     <option>LocaleString</option>
@@ -151,7 +151,23 @@
                     this.currentCvl = null;
                     this.allCvls.shift();
                 },
-                saveCvl: function () {}
+                saveCvl: function () {
+                    this.currentCvl.editing = false;
+                    if (this.currentCvl.id.length > 0 &&
+                        (this.currentCvl.dataType === "String" || this.currentCvl.dataType === "LocaleString")) {
+                        $.post(buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false),
+                            JSON.stringify({
+                                key: "Dummy",
+                                value: "Dummy",
+                                index: 0
+                            }));
+                    }
+                    fetchAllCvls();
+                },
+                selectDataType: function (value) {
+                    console.log(value);
+                    this.currentCvl.dataType = value;
+                }
             }
         });
 
