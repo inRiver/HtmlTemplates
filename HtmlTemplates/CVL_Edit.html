@@ -8,8 +8,8 @@
 </head>
 <body class="container mt-4">
     <div id="app">
-    <h1>CVL</h1>
-    <div v-if="mode=='cvlListing'">
+        <div v-if="mode=='cvlListing'">
+            <h2>CVL</h2>
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
                     <tr>
@@ -33,6 +33,13 @@
             <table></table>
         </div>
         <div v-if="mode=='cvlEditString'">
+            <div class="container p-3 my-3 border d-flex justify-content-between">
+                <h2>{{cvlValueHeader}}</h2>
+                <div>
+                    <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
+                    <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                </div>
+            </div>
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
                     <tr>
@@ -45,17 +52,28 @@
                 <tbody v-for="cvlValue in currentCvl.values">
                     <tr>
                         <td>
-                            {{cvlValue.key}}
+                            <div v-if="!cvlValue.editing">{{cvlValue.key}}</div>
+                            <div v-if="cvlValue.editing">
+                                <input type="text" v-model="cvlValue.key" />
+                            </div>
                         </td>
                         <td>
-                            {{cvlValue.index}}
+                            <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
+                            <div v-if="cvlValue.editing">
+                                <input type="text" v-model="cvlValue.index" />
+                            </div>
                         </td>
                         <td>
-                            {{cvlValue.value}}
+                            <div v-if="!cvlValue.editing">{{cvlValue.value}}</div>
+                            <div v-if="cvlValue.editing">
+                                <input type="text" v-model="cvlValue.value" />
+                            </div>
                         </td>
-                        <td>
-                            <button class="btn btn-info">Edit</button>
-                            <button class="btn btn-info">Delete</button>
+                        <td class="text-center">
+                            <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
+                            <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
+                            <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
+                            <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
                         </td>
                     </tr>
                 </tbody>
@@ -85,6 +103,11 @@
             mounted: function () {
                 this.fetchAllCvls();
             },
+            computed: {
+                cvlValueHeader: function() {
+                    return "CVL Values for " + this.currentCvl.id;
+                }
+            },
             methods: {
                 fetchAllCvls: function () {
                     var self = this;
@@ -105,6 +128,52 @@
                         this.mode = "cvlEditString";
                     }
                     this.currentCvl = cvl;
+                },
+                addCvlValue: function() {
+                    var cvlValue = {
+                        key: "",
+                        value: [],
+                        index: null,
+                        httpMethod: "POST",
+                        editing: true
+                    };
+                    this.currentCvl.values.unshift(cvlValue);
+                },
+                deleteCvlValue: function(cvlValue) {
+                    if (confirm("Are you sure you want to delete CVL value with key " + cvlValue.key + "?")) {
+                        var ajaxSettings =
+                            buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
+                        ajaxSettings.type = "DELETE";
+                        $.ajax(ajaxSettings);
+                        fetchCvlValues(this.currentCvl);
+                    }
+                },
+                saveCvlValue: function(cvlValue) {
+                    if (cvlValue.key.length > 0 && cvlValue.value.length > 0) {
+                        if (cvlValue.index !== null) {
+                            cvlValue.index = parseInt(cvlValue.index);
+                        }
+
+                        var cvlValueToSend = { key: cvlValue.key, value: cvlValue.value, index: cvlValue.index };
+                        if (cvlValue.httpMethod === "POST") {
+                            var ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false);
+                            ajaxSettings.data = JSON.stringify(cvlValueToSend);
+                            $.post(ajaxSettings);
+                        } else { // PUT
+                            var ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
+                            ajaxSettings.type = cvlValue.httpMethod;
+                            ajaxSettings.data = JSON.stringify(cvlValueToSend);
+                            $.ajax(ajaxSettings);
+                        }
+
+                        fetchCvlValues(this.currentCvl);
+                    }
+                },
+                cancelCvlValue: function(cvlValue) {
+                    if (cvlValue.httpMethod === "POST") {
+                        this.currentCvl.values.shift();
+                    }
+                    cvlValue.editing = false;
                 }
             }
         });
@@ -112,6 +181,10 @@
         function fetchCvlValues(cvl) {
             $.getJSON(buildAjaxSettings("model/cvls/" + cvl.id + "/values", false), function (cvlValues) {
                 cvl.values = cvlValues;
+                cvl.values.forEach(function (value, index) {
+                    value.httpMethod = "PUT";
+                    value.editing = false;
+                });
             });
         };
 
