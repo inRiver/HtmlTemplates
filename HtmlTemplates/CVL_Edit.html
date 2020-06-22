@@ -15,19 +15,15 @@
                     <tr>
                         <th class="col-xs-3">Id</th>
                         <th class="col-xs-2">Data Type</th>
-                        <th class="col-xs-3"></th>
                     </tr>
                 </thead>
                 <tbody v-for="cvl in allCvls">
-                    <tr>
-                        <td v-on:click="cvlValueEdit(cvl)">
+                    <tr v-on:click="cvlValueEdit(cvl)">
+                        <td>
                             {{cvl.id}}
                         </td>
                         <td>
                             {{cvl.dataType}}
-                        </td>
-                        <td class="text-center">
-                            <button class="btn btn-info" v-on:click="removeCvl(cvl)">Delete</button>
                         </td>
                     </tr>
                 </tbody>
@@ -109,9 +105,6 @@
                         this.mode = "cvlEditString";
                     }
                     this.currentCvl = cvl;
-                },
-                removeCvl: function(cvl) {
-
                 }
             }
         });
