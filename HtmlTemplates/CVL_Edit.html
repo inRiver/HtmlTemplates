@@ -8,7 +8,11 @@
 </head>
 <body class="container mt-4">
     <div id="app">
-        <div v-if="mode=='cvlListing'">
+    <div class="container p-3 my-3 border d-flex justify-content-between">
+        <h1>CVL</h1>
+        <button class="btn btn-info" v-on:click="addCvl()" v-if="mode=='cvlListing'">Add CVL</button>
+    </div>
+    <div v-if="mode=='cvlListing'">
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
                     <tr>
@@ -18,16 +22,27 @@
                     </tr>
                 </thead>
                 <tbody v-for="cvl in allCvls">
-                    <tr v-on:click="cvlValueEdit(cvl)">
-                        <td>
-                            {{cvl.id}}
+                    <tr>
+                        <td v-on:click="cvlValueEdit(cvl)">
+                            <div v-if="!cvl.editing">{{cvl.id}}</div>
+                            <div v-if="cvl.editing">
+                                <input type="text" v-model="currentCvl.id"/>
+                            </div>
                         </td>
                         <td>
-                            {{cvl.dataType}}
+                            <div v-if="!cvl.editing">{{cvl.dataType}}</div>
+                            <div v-if="cvl.editing">
+                                <select v-on:change="this.currentCvl.dataType=this.value">
+                                    <option>-</option>
+                                    <option>String</option>
+                                    <option>LocaleString</option>
+                                </select>
+                            </div>
                         </td>
-                        <td>
-                            <button class="btn btn-info">Edit</button>
-                            <button class="btn btn-info">Delete</button>
+                        <td class="text-center">
+                            <button class="btn btn-info" v-if="!cvl.editing" v-on:click="removeCvl(cvl)">Delete</button>
+                            <button class="btn btn-info" v-if="cvl.editing" v-on:click="saveCvl(cvl)">Save</button>
+                            <button class="btn btn-info" v-if="cvl.editing" v-on:click="cancelCvl(cvl)">Cancel</button>
                         </td>
                     </tr>
                 </tbody>
@@ -65,11 +80,11 @@
                 </tbody>
             </table>
         </div>
-</div>
+    </div>
 
-<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
-<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
 
@@ -96,14 +111,17 @@
                         cvls.forEach(function (item, index) {
                             var cvlWithValues = item;
                             cvlWithValues.values = [];
+                            cvlWithValues.editing = false;
                             self.allCvls.push(cvlWithValues);
                         });
                     });
                 },
                 cvlValueEdit: function (cvl) {
-                    console.log(cvl);
+                    if (cvl.editing) {
+                        return;
+                    }
+
                     fetchCvlValues(cvl);
-                    console.log(cvl);
                     if (cvl.dataType === "LocaleString") {
                         this.mode = "cvlEditLocaleString";
                     }
@@ -111,7 +129,29 @@
                         this.mode = "cvlEditString";
                     }
                     this.currentCvl = cvl;
-                }
+                },
+                removeCvl: function(cvl) {
+
+                },
+                addCvl: function () {
+                    if (this.currentCvl !== null && this.currentCvl.editing) {
+                        return;
+                    }
+
+                    var cvl = {
+                        id: "",
+                        dataType: "",
+                        values: [],
+                        editing: true
+                    };
+                    this.allCvls.unshift(cvl);
+                    this.currentCvl = cvl;
+                },
+                cancelCvl: function() {
+                    this.currentCvl = null;
+                    this.allCvls.shift();
+                },
+                saveCvl: function () {}
             }
         });
 
