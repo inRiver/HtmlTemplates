@@ -8,10 +8,7 @@
 </head>
 <body class="container mt-4">
     <div id="app">
-    <div class="container p-3 my-3 border d-flex justify-content-between">
-        <h1>CVL</h1>
-        <button class="btn btn-info" v-on:click="addCvl()" v-if="mode=='cvlListing'">Add CVL</button>
-    </div>
+    <h1>CVL</h1>
     <div v-if="mode=='cvlListing'">
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
@@ -24,25 +21,13 @@
                 <tbody v-for="cvl in allCvls">
                     <tr>
                         <td v-on:click="cvlValueEdit(cvl)">
-                            <div v-if="!cvl.editing">{{cvl.id}}</div>
-                            <div v-if="cvl.editing">
-                                <input type="text" v-model="currentCvl.id"/>
-                            </div>
+                            {{cvl.id}}
                         </td>
                         <td>
-                            <div v-if="!cvl.editing">{{cvl.dataType}}</div>
-                            <div v-if="cvl.editing">
-                                <select v-model="currentCvl.dataType">
-                                    <option>-</option>
-                                    <option>String</option>
-                                    <option>LocaleString</option>
-                                </select>
-                            </div>
+                            {{cvl.dataType}}
                         </td>
                         <td class="text-center">
-                            <button class="btn btn-info" v-if="!cvl.editing" v-on:click="removeCvl(cvl)">Delete</button>
-                            <button class="btn btn-info" v-if="cvl.editing" v-on:click="saveCvl(cvl)">Save</button>
-                            <button class="btn btn-info" v-if="cvl.editing" v-on:click="cancelCvl(cvl)">Cancel</button>
+                            <button class="btn btn-info" v-on:click="removeCvl(cvl)">Delete</button>
                         </td>
                     </tr>
                 </tbody>
@@ -111,16 +96,11 @@
                         cvls.forEach(function (item, index) {
                             var cvlWithValues = item;
                             cvlWithValues.values = [];
-                            cvlWithValues.editing = false;
                             self.allCvls.push(cvlWithValues);
                         });
                     });
                 },
                 cvlValueEdit: function (cvl) {
-                    if (cvl.editing) {
-                        return;
-                    }
-
                     fetchCvlValues(cvl);
                     if (cvl.dataType === "LocaleString") {
                         this.mode = "cvlEditLocaleString";
@@ -132,41 +112,6 @@
                 },
                 removeCvl: function(cvl) {
 
-                },
-                addCvl: function () {
-                    if (this.currentCvl !== null && this.currentCvl.editing) {
-                        return;
-                    }
-
-                    var cvl = {
-                        id: "",
-                        dataType: "",
-                        values: [],
-                        editing: true
-                    };
-                    this.allCvls.unshift(cvl);
-                    this.currentCvl = cvl;
-                },
-                cancelCvl: function() {
-                    this.currentCvl = null;
-                    this.allCvls.shift();
-                },
-                saveCvl: function () {
-                    this.currentCvl.editing = false;
-                    if (this.currentCvl.id.length > 0 &&
-                        (this.currentCvl.dataType === "String" || this.currentCvl.dataType === "LocaleString")) {
-                        $.post(buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false),
-                            JSON.stringify({
-                                key: "Dummy",
-                                value: "Dummy",
-                                index: 0
-                            }));
-                    }
-                    fetchAllCvls();
-                },
-                selectDataType: function (value) {
-                    console.log(value);
-                    this.currentCvl.dataType = value;
                 }
             }
         });
