@@ -30,42 +30,49 @@
             </table>
         </div>
         <div v-if="mode=='cvlEditLocaleString'">
+            <div class="container p-3 my-3 border d-flex justify-content-between">
+                <h2>{{cvlValueHeader}}</h2>
+                <div>
+                    <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
+                    <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                </div>
+            </div>
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
-                <tr>
-                    <th class="col-xs-3">Key</th>
-                    <th class="col-xs-2">Index</th>
-                    <th class="col-xs-4" v-for="language in allLanguages">{{language.displayName}}</th>
-                    <th class="col-xs-3"></th>
-                </tr>
+                    <tr>
+                        <th class="col-xs-3">Key</th>
+                        <th class="col-xs-2">Index</th>
+                        <th class="col-xs-4" v-for="language in allLanguages">{{language.displayName}}</th>
+                        <th class="col-xs-3"></th>
+                    </tr>
                 </thead>
                 <tbody v-for="cvlValue in currentCvl.values">
-                <tr>
-                    <td>
-                        <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
-                        <div v-if="cvlValue.new">
-                            <input type="text" v-model="cvlValue.key" />
-                        </div>
-                    </td>
-                    <td>
-                        <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
-                        <div v-if="cvlValue.editing">
-                            <input type="text" v-model="cvlValue.index" />
-                        </div>
-                    </td>
-                    <td v-for="language in allLanguages">
-                        <div v-if="!cvlValue.editing">{{cvlValue.value[language.name]}}</div>
-                        <div v-if="cvlValue.editing">
-                            <input type="text" v-model="{{cvlValue.value[language.name]}}" />
-                        </div>
-                    </td>
-                    <td class="text-center">
-                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
-                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
-                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
-                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
-                    </td>
-                </tr>
+                    <tr>
+                        <td>
+                            <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
+                            <div v-if="cvlValue.new">
+                                <input type="text" v-model="cvlValue.key" />
+                            </div>
+                        </td>
+                        <td>
+                            <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
+                            <div v-if="cvlValue.editing">
+                                <input type="text" v-model="cvlValue.index" />
+                            </div>
+                        </td>
+                        <td v-for="(language, index) in allLanguages">
+                            <div v-if="!cvlValue.editing">{{cvlValue.value[language.name]}}</div>
+                            <div v-if="cvlValue.editing">
+                                <input type="text" v-model="cvlValue.value[language.name]" :key="index" />
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
+                            <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
+                            <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
+                            <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
@@ -162,7 +169,6 @@
                     var self = this;
                     $.getJSON(buildAjaxSettings("model/languages"), function (languages) {
                         self.allLanguages = languages;
-                        console.log(self.allLanguages);
                     });
                 },
                 cvlValueEdit: function (cvl) {
@@ -202,41 +208,48 @@
                         $.ajax(ajaxSettings);
                     }
                 },
-                saveCvlValue: function(cvlValue) {
-                    if (cvlValue.key.length > 0 && cvlValue.value.length > 0) {
-                        if (cvlValue.index !== null) {
-                            cvlValue.index = parseInt(cvlValue.index);
+                saveCvlValue: function (cvlValue) {
+                    if (cvlValue.index !== null) {
+                        cvlValue.index = parseInt(cvlValue.index);
+                    }
+
+                    var value = cvlValue.value;
+                    if (Array.isArray(value)) {
+                        value = new Object();
+                        for (var i = 0; i < this.allLanguages.length; i++) {
+                            var code = this.allLanguages[i].name;
+                            value[code] = cvlValue.value[code];
                         }
+                    }
 
-                        var self = this;
-                        var cvlValueToSend = { key: cvlValue.key, value: cvlValue.value, index: cvlValue.index };
-                        var ajaxSettings;
-                        if (cvlValue.new) {
-                            ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false);
-                            ajaxSettings.data = JSON.stringify(cvlValueToSend);
+                    var cvlValueToSend = { key: cvlValue.key, value: value, index: cvlValue.index };
+                    var ajaxSettings;
+                    var self = this;
+                    if (cvlValue.new) {
+                        ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false);
+                        ajaxSettings.data = JSON.stringify(cvlValueToSend);
 
-                            ajaxSettings.error = function (xhr) {
-                                alert(xhr.responseText);
-                            };
-                            ajaxSettings.complete = function () {
-                                updateCvlValueToCvl(self.currentCvl, cvlValue);
-                            };
+                        ajaxSettings.error = function (xhr) {
+                            alert(xhr.responseText);
+                        };
+                        ajaxSettings.complete = function () {
+                            updateCvlValueToCvl(self.currentCvl, cvlValue);
+                        };
 
-                            $.post(ajaxSettings);
-                        } else { // PUT
-                            ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
-                            ajaxSettings.type = "PUT";
-                            ajaxSettings.data = JSON.stringify(cvlValueToSend);
+                        $.post(ajaxSettings);
+                    } else { // PUT
+                        ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
+                        ajaxSettings.type = "PUT";
+                        ajaxSettings.data = JSON.stringify(cvlValueToSend);
 
-                            ajaxSettings.error = function (xhr) {
-                                alert(xhr.responseText);
-                            };
-                            ajaxSettings.complete = function () {
-                                updateCvlValueToCvl(self.currentCvl, cvlValue);
-                            };
+                        ajaxSettings.error = function (xhr) {
+                            alert(xhr.responseText);
+                        };
+                        ajaxSettings.complete = function () {
+                            updateCvlValueToCvl(self.currentCvl, cvlValue);
+                        };
 
-                            $.ajax(ajaxSettings);
-                        }
+                        $.ajax(ajaxSettings);
                     }
                 },
                 cancelCvlValue: function(cvlValue) {
@@ -255,6 +268,7 @@
                 cvlValues.forEach(function (cvlValue, index) {
                     cvlValue.editing = false;
                     cvlValue.new = false;
+
                     cvl.values.push(cvlValue);
                 });
             });
@@ -297,7 +311,6 @@
             foundValue.editing = false;
             foundValue.new = false;
         }
-
     </script>
 
 </body>
