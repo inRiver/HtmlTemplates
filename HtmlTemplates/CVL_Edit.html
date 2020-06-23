@@ -346,7 +346,6 @@
                         });
                 });
 
-                console.log(columns);
                 workSheet.columns = columns;
 
                 currentCvl.values.forEach(cvlValue => {
@@ -361,7 +360,8 @@
                     workSheet.addRow(row);
                 });
             } else {
-                workSheet.push({ header: "Value", key: "value" });
+                columns.push({ header: "Value", key: "value" });
+                workSheet.columns = columns;
 
                 currentCvl.values.forEach(cvlValue => {
                     var row = {
