@@ -52,8 +52,8 @@
                 <tbody v-for="cvlValue in currentCvl.values">
                     <tr>
                         <td>
-                            <div v-if="!cvlValue.editing">{{cvlValue.key}}</div>
-                            <div v-if="cvlValue.editing">
+                            <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
+                            <div v-if="cvlValue.new">
                                 <input type="text" v-model="cvlValue.key" />
                             </div>
                         </td>
@@ -135,17 +135,26 @@
                         value: [],
                         index: null,
                         httpMethod: "POST",
-                        editing: true
+                        editing: true,
+                        new: true
                     };
                     this.currentCvl.values.unshift(cvlValue);
                 },
                 deleteCvlValue: function(cvlValue) {
                     if (confirm("Are you sure you want to delete CVL value with key " + cvlValue.key + "?")) {
+                        var self = this;
                         var ajaxSettings =
                             buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
                         ajaxSettings.type = "DELETE";
+
+                        ajaxSettings.error = function (xhr) {
+                            alert(xhr.responseText);
+                        };
+                        ajaxSettings.complete = function () {
+                            removeCvlValueToCvl(self.currentCvl, cvlValue);
+                        };
+
                         $.ajax(ajaxSettings);
-                        fetchCvlValues(this.currentCvl);
                     }
                 },
                 saveCvlValue: function(cvlValue) {
@@ -154,36 +163,55 @@
                             cvlValue.index = parseInt(cvlValue.index);
                         }
 
+                        var self = this;
                         var cvlValueToSend = { key: cvlValue.key, value: cvlValue.value, index: cvlValue.index };
+                        var ajaxSettings;
                         if (cvlValue.httpMethod === "POST") {
-                            var ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false);
+                            ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false);
                             ajaxSettings.data = JSON.stringify(cvlValueToSend);
+
+                            ajaxSettings.error = function (xhr) {
+                                alert(xhr.responseText);
+                            };
+                            ajaxSettings.complete = function () {
+                                updateCvlValueToCvl(self.currentCvl, cvlValue);
+                            };
+
                             $.post(ajaxSettings);
                         } else { // PUT
-                            var ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
+                            ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
                             ajaxSettings.type = cvlValue.httpMethod;
                             ajaxSettings.data = JSON.stringify(cvlValueToSend);
+
+                            ajaxSettings.error = function (xhr) {
+                                alert(xhr.responseText);
+                            };
+                            ajaxSettings.complete = function () {
+                                updateCvlValueToCvl(self.currentCvl, cvlValue);
+                            };
+
                             $.ajax(ajaxSettings);
                         }
-
-                        fetchCvlValues(this.currentCvl);
                     }
                 },
                 cancelCvlValue: function(cvlValue) {
-                    if (cvlValue.httpMethod === "POST") {
+                    if (cvlValue.new) {
                         this.currentCvl.values.shift();
                     }
                     cvlValue.editing = false;
+                    cvlValue.new = false;
                 }
             }
         });
 
         function fetchCvlValues(cvl) {
             $.getJSON(buildAjaxSettings("model/cvls/" + cvl.id + "/values", false), function (cvlValues) {
-                cvl.values = cvlValues;
-                cvl.values.forEach(function (value, index) {
-                    value.httpMethod = "PUT";
-                    value.editing = false;
+                cvl.values.splice(0, cvl.values.length);
+                cvlValues.forEach(function (cvlValue, index) {
+                    cvlValue.httpMethod = "PUT";
+                    cvlValue.editing = false;
+                    cvlValue.new = false;
+                    cvl.values.push(cvlValue);
                 });
             });
         };
@@ -202,6 +230,28 @@
                 async: asyncOperation
             };
             return ajaxSettings;
+        }
+
+        function removeCvlValueToCvl(currentCvl, cvlValue) {
+            var indexToRemove = -1;
+            currentCvl.values.forEach(function(value, index) {
+                if (value.key === cvlValue.key) {
+                    indexToRemove = index;
+                }
+            });
+            if (indexToRemove !== -1) {
+                currentCvl.values.splice(indexToRemove, 1);
+            }
+        }
+
+        function updateCvlValueToCvl(currentCvl, cvlValue) {
+            var foundValue = currentCvl.values.find(function (cvl) {
+                return cvl.key === cvlValue.key;
+            });
+            foundValue.index = cvlValue.index;
+            foundValue.value = cvlValue.value;
+            foundValue.editing = false;
+            foundValue.new = false;
         }
 
     </script>
