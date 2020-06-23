@@ -35,6 +35,8 @@
                 <div>
                     <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
                     <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                    <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
+                    <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
                 </div>
             </div>
             <table class="table table-bordered table-hover table-sm">
@@ -82,6 +84,8 @@
                 <div>
                     <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
                     <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                    <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
+                    <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
                 </div>
             </div>
             <table class="table table-bordered table-hover table-sm">
@@ -128,6 +132,9 @@
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/exceljs/dist/exceljs.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js"></script>
+
 
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
 
@@ -150,7 +157,7 @@
                 this.fetchAllLanguages();
             },
             computed: {
-                cvlValueHeader: function() {
+                cvlValueHeader: function () {
                     return "CVL Values for " + this.currentCvl.id;
                 }
             },
@@ -181,7 +188,7 @@
                     }
                     this.currentCvl = cvl;
                 },
-                addCvlValue: function() {
+                addCvlValue: function () {
                     var cvlValue = {
                         key: "",
                         value: [],
@@ -191,7 +198,7 @@
                     };
                     this.currentCvl.values.unshift(cvlValue);
                 },
-                deleteCvlValue: function(cvlValue) {
+                deleteCvlValue: function (cvlValue) {
                     if (confirm("Are you sure you want to delete CVL value with key " + cvlValue.key + "?")) {
                         var self = this;
                         var ajaxSettings =
@@ -252,7 +259,7 @@
                         $.ajax(ajaxSettings);
                     }
                 },
-                cancelCvlValue: function(cvlValue) {
+                cancelCvlValue: function (cvlValue) {
                     if (cvlValue.new) {
                         this.currentCvl.values.shift();
                     }
@@ -292,7 +299,7 @@
 
         function removeCvlValueToCvl(currentCvl, cvlValue) {
             var indexToRemove = -1;
-            currentCvl.values.forEach(function(value, index) {
+            currentCvl.values.forEach(function (value, index) {
                 if (value.key === cvlValue.key) {
                     indexToRemove = index;
                 }
@@ -310,6 +317,66 @@
             foundValue.value = cvlValue.value;
             foundValue.editing = false;
             foundValue.new = false;
+        }
+
+        function importCvlValues(currentCvl) {
+
+        }
+
+        function exportCvlValues() {
+            var allLanguages = app.allLanguages;
+            var currentCvl = app.currentCvl;
+
+            var workbook = new ExcelJS.Workbook();
+            var workSheet = workbook.addWorksheet(currentCvl.id);
+
+            var columns = [
+                { header: 'Key', key: 'key' },
+                { header: 'ParentKey', key: 'parentKey' },
+                { header: 'SortOrder', key: 'sortOrder' },
+                { header: 'Deactivated', key: 'deactivated' }
+            ];
+
+            if (currentCvl.dataType === "LocaleString") {
+                allLanguages.forEach(language => {
+                    columns.push(
+                        {
+                            header: language.name,
+                            key: language.name
+                        });
+                });
+
+                console.log(columns);
+                workSheet.columns = columns;
+
+                currentCvl.values.forEach(cvlValue => {
+                    var row = {
+                        key: cvlValue.key,
+                        sortOrder: cvlValue.index
+                    };
+                    allLanguages.forEach(language => {
+                        row[language.name] = cvlValue.value[language.name];
+                    });
+                    console.log(row);
+                    workSheet.addRow(row);
+                });
+            } else {
+                workSheet.push({ header: "Value", key: "value" });
+
+                currentCvl.values.forEach(cvlValue => {
+                    var row = {
+                        key: cvlValue.key,
+                        sortOrder: cvlValue.index,
+                        value: cvlValue.value
+                    };
+                    workSheet.addRow(row);
+                });
+            }
+
+            var filename = "cvl_values_" + currentCvl.id + ".xlsx";
+            workbook.xlsx.writeBuffer()
+                .then(buffer => saveAs(new Blob([buffer]), filename))
+                .catch(err => console.log('Error writing excel export', err));
         }
     </script>
 
