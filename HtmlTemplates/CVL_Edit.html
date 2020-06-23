@@ -30,7 +30,44 @@
             </table>
         </div>
         <div v-if="mode=='cvlEditLocaleString'">
-            <table></table>
+            <table class="table table-bordered table-hover table-sm">
+                <thead class="thead-light">
+                <tr>
+                    <th class="col-xs-3">Key</th>
+                    <th class="col-xs-2">Index</th>
+                    <th class="col-xs-4" v-for="language in allLanguages">{{language.displayName}}</th>
+                    <th class="col-xs-3"></th>
+                </tr>
+                </thead>
+                <tbody v-for="cvlValue in currentCvl.values">
+                <tr>
+                    <td>
+                        <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
+                        <div v-if="cvlValue.new">
+                            <input type="text" v-model="cvlValue.key" />
+                        </div>
+                    </td>
+                    <td>
+                        <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
+                        <div v-if="cvlValue.editing">
+                            <input type="text" v-model="cvlValue.index" />
+                        </div>
+                    </td>
+                    <td v-for="language in allLanguages">
+                        <div v-if="!cvlValue.editing">{{cvlValue.value[language.name]}}</div>
+                        <div v-if="cvlValue.editing">
+                            <input type="text" v-model="{{cvlValue.value[language.name]}}" />
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
+                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
+                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
+                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
         <div v-if="mode=='cvlEditString'">
             <div class="container p-3 my-3 border d-flex justify-content-between">
@@ -98,10 +135,12 @@
             data: {
                 allCvls: [],
                 mode: "cvlListing",
-                currentCvl: null
+                currentCvl: null,
+                allLanguages: []
             },
             mounted: function () {
                 this.fetchAllCvls();
+                this.fetchAllLanguages();
             },
             computed: {
                 cvlValueHeader: function() {
@@ -117,6 +156,13 @@
                             cvlWithValues.values = [];
                             self.allCvls.push(cvlWithValues);
                         });
+                    });
+                },
+                fetchAllLanguages: function () {
+                    var self = this;
+                    $.getJSON(buildAjaxSettings("model/languages"), function (languages) {
+                        self.allLanguages = languages;
+                        console.log(self.allLanguages);
                     });
                 },
                 cvlValueEdit: function (cvl) {
