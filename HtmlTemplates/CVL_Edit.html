@@ -134,7 +134,6 @@
                         key: "",
                         value: [],
                         index: null,
-                        httpMethod: "POST",
                         editing: true,
                         new: true
                     };
@@ -166,7 +165,7 @@
                         var self = this;
                         var cvlValueToSend = { key: cvlValue.key, value: cvlValue.value, index: cvlValue.index };
                         var ajaxSettings;
-                        if (cvlValue.httpMethod === "POST") {
+                        if (cvlValue.new) {
                             ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false);
                             ajaxSettings.data = JSON.stringify(cvlValueToSend);
 
@@ -180,7 +179,7 @@
                             $.post(ajaxSettings);
                         } else { // PUT
                             ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
-                            ajaxSettings.type = cvlValue.httpMethod;
+                            ajaxSettings.type = "PUT";
                             ajaxSettings.data = JSON.stringify(cvlValueToSend);
 
                             ajaxSettings.error = function (xhr) {
@@ -208,7 +207,6 @@
             $.getJSON(buildAjaxSettings("model/cvls/" + cvl.id + "/values", false), function (cvlValues) {
                 cvl.values.splice(0, cvl.values.length);
                 cvlValues.forEach(function (cvlValue, index) {
-                    cvlValue.httpMethod = "PUT";
                     cvlValue.editing = false;
                     cvlValue.new = false;
                     cvl.values.push(cvlValue);
