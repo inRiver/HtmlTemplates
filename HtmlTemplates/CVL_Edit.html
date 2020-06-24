@@ -5,139 +5,140 @@
     <title>CVL Editor</title>
 
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.0.0/animate.min.css" />
 </head>
 <body class="container mt-4">
     <input type="file" id="hiddenFileInput" style="display: none" />
-    <div id="app">
-        <div v-if="mode=='cvlListing'">
-            <h2>CVL</h2>
-            <table class="table table-bordered table-hover table-sm">
-                <thead class="thead-light">
-                    <tr>
-                        <th class="col-xs-3">Id</th>
-                        <th class="col-xs-2">Data Type</th>
-                    </tr>
-                </thead>
-                <tbody v-for="cvl in allCvls">
-                    <tr v-on:click="cvlValueEdit(cvl)">
-                        <td>
-                            {{cvl.id}}
-                        </td>
-                        <td>
-                            {{cvl.dataType}}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        <div v-if="mode=='cvlEditLocaleString'">
-            <div class="container p-3 my-3 border d-flex justify-content-between row">
-                <h2>{{cvlValueHeader}}</h2>
-                <div>
-                    <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
-                    <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
-                    <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
-                    <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
-                </div>
-            </div>
-            <div class="row">
-                <p id="progressLocaleString"></p>
-            </div>
-            <div class="row">
-                <table class="table table-bordered table-hover table-sm">
-                    <thead class="thead-light">
-                        <tr>
-                            <th class="col-xs-3">Key</th>
-                            <th class="col-xs-2">Index</th>
-                            <th class="col-xs-4" v-for="language in allLanguages">{{language.displayName}}</th>
-                            <th class="col-xs-3"></th>
-                        </tr>
-                    </thead>
-                    <tbody v-for="cvlValue in currentCvl.values">
-                        <tr>
-                            <td>
-                                <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
-                                <div v-if="cvlValue.new">
-                                    <input type="text" v-model="cvlValue.key" />
-                                </div>
-                            </td>
-                            <td>
-                                <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
-                                <div v-if="cvlValue.editing">
-                                    <input type="text" v-model="cvlValue.index" />
-                                </div>
-                            </td>
-                            <td v-for="(language, index) in allLanguages">
-                                <div v-if="!cvlValue.editing">{{cvlValue.value[language.name]}}</div>
-                                <div v-if="cvlValue.editing">
-                                    <input type="text" v-model="cvlValue.value[language.name]" :key="index" />
-                                </div>
-                            </td>
-                            <td class="text-center">
-                                <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
-                                <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
-                                <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
-                                <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+<div id="app">
+    <div v-if="mode=='cvlListing'" class="animate__animated animate__fadeInDown">
+        <h2>CVL</h2>
+        <table class="table table-bordered table-hover table-sm">
+            <thead class="thead-light">
+            <tr>
+                <th class="col-xs-3">Id</th>
+                <th class="col-xs-2">Data Type</th>
+            </tr>
+            </thead>
+            <tbody v-for="cvl in allCvls">
+            <tr v-on:click="cvlValueEdit(cvl)">
+                <td>
+                    {{cvl.id}}
+                </td>
+                <td>
+                    {{cvl.dataType}}
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div v-if="mode=='cvlEditLocaleString'" class="animate__animated animate__fadeInDown">
+        <div class="container p-3 my-3 border d-flex justify-content-between row">
+            <h2>{{cvlValueHeader}}</h2>
+            <div>
+                <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
+                <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
+                <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
             </div>
         </div>
-        <div v-if="mode=='cvlEditString'">
-            <div class="container p-3 my-3 border d-flex justify-content-between row">
-                <h2>{{cvlValueHeader}}</h2>
-                <div>
-                    <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
-                    <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
-                    <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
-                    <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
-                </div>
-            </div>
-            <div class="row">
-                <p id="progressLocaleString"></p>
-            </div>
-            <div class="row"></div>
+        <div class="row">
+            <p id="progressLocaleString"></p>
+        </div>
+        <div class="row">
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
-                    <tr>
-                        <th class="col-xs-3">Key</th>
-                        <th class="col-xs-2">Index</th>
-                        <th class="col-xs-4">Value</th>
-                        <th class="col-xs-3"></th>
-                    </tr>
+                <tr>
+                    <th class="col-xs-3">Key</th>
+                    <th class="col-xs-2">Index</th>
+                    <th class="col-xs-4" v-for="language in allLanguages">{{language.displayName}}</th>
+                    <th class="col-xs-3"></th>
+                </tr>
                 </thead>
                 <tbody v-for="cvlValue in currentCvl.values">
-                    <tr>
-                        <td>
-                            <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
-                            <div v-if="cvlValue.new">
-                                <input type="text" v-model="cvlValue.key" />
-                            </div>
-                        </td>
-                        <td>
-                            <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
-                            <div v-if="cvlValue.editing">
-                                <input type="text" v-model="cvlValue.index" />
-                            </div>
-                        </td>
-                        <td>
-                            <div v-if="!cvlValue.editing">{{cvlValue.value}}</div>
-                            <div v-if="cvlValue.editing">
-                                <input type="text" v-model="cvlValue.value" />
-                            </div>
-                        </td>
-                        <td class="text-center">
-                            <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
-                            <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
-                            <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
-                            <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
-                        </td>
-                    </tr>
+                <tr>
+                    <td>
+                        <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
+                        <div v-if="cvlValue.new">
+                            <input type="text" v-model="cvlValue.key"/>
+                        </div>
+                    </td>
+                    <td>
+                        <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
+                        <div v-if="cvlValue.editing">
+                            <input type="text" v-model="cvlValue.index"/>
+                        </div>
+                    </td>
+                    <td v-for="(language, index) in allLanguages">
+                        <div v-if="!cvlValue.editing">{{cvlValue.value[language.name]}}</div>
+                        <div v-if="cvlValue.editing">
+                            <input type="text" v-model="cvlValue.value[language.name]" :key="index"/>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
+                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
+                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
+                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
+                    </td>
+                </tr>
                 </tbody>
             </table>
         </div>
     </div>
+    <div v-if="mode=='cvlEditString'" class="animate__animated animate__fadeInDown">
+        <div class="container p-3 my-3 border d-flex justify-content-between row">
+            <h2>{{cvlValueHeader}}</h2>
+            <div>
+                <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
+                <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
+                <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
+            </div>
+        </div>
+        <div class="row">
+            <p id="progressLocaleString"></p>
+        </div>
+        <div class="row"></div>
+        <table class="table table-bordered table-hover table-sm">
+            <thead class="thead-light">
+            <tr>
+                <th class="col-xs-3">Key</th>
+                <th class="col-xs-2">Index</th>
+                <th class="col-xs-4">Value</th>
+                <th class="col-xs-3"></th>
+            </tr>
+            </thead>
+            <tbody v-for="cvlValue in currentCvl.values">
+            <tr>
+                <td>
+                    <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
+                    <div v-if="cvlValue.new">
+                        <input type="text" v-model="cvlValue.key"/>
+                    </div>
+                </td>
+                <td>
+                    <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
+                    <div v-if="cvlValue.editing">
+                        <input type="text" v-model="cvlValue.index"/>
+                    </div>
+                </td>
+                <td>
+                    <div v-if="!cvlValue.editing">{{cvlValue.value}}</div>
+                    <div v-if="cvlValue.editing">
+                        <input type="text" v-model="cvlValue.value"/>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
+                    <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
+                    <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
+                    <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
