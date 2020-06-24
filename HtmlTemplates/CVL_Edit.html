@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
 </head>
 <body class="container mt-4">
+    <input type="file" id="hiddenFileInput" style="display: none" />
     <div id="app">
         <div v-if="mode=='cvlListing'">
             <h2>CVL</h2>
@@ -155,6 +156,13 @@
             mounted: function () {
                 this.fetchAllCvls();
                 this.fetchAllLanguages();
+
+                var xlf = document.getElementById('hiddenFileInput');
+                if (!xlf.addEventListener) return;
+                function handleFile(e) {
+                    doImport(e.target.files[0]);
+                }
+                xlf.addEventListener('change', handleFile, false);
             },
             computed: {
                 cvlValueHeader: function () {
@@ -319,8 +327,76 @@
             foundValue.new = false;
         }
 
-        function importCvlValues(currentCvl) {
+        function importCvlValues() {
+            $("#hiddenFileInput").trigger("click");
+        }
 
+        function doImport(filename) {
+            var reader = new FileReader();
+            reader.onload = loadHandlerXlsx;
+            reader.onerror = errorHandler;
+            reader.readAsBinaryString(filename);
+        }
+
+        function loadHandlerXlsx(event) {
+            var allLanguages = app.allLanguages;
+            var currentCvl = app.currentCvl;
+
+            // var workbook = XLSX.read(event.target.result, { type: 'binary' });
+
+            var workbook = new ExcelJS.Workbook();
+
+            workbook.xlsx.load(event.target.result);
+            console.log("Loaded");
+            console.log(workbook.e);
+            console.log(workbook.e.worksheets);
+            console.log(workbook.e.worksheets.length);
+
+            var worksheet;
+            workbook.eachSheet(function (sheet, sheetId) {
+                console.log("sheetId = " + sheetId);
+                console.log(sheet);
+                worksheet = sheet;
+            });
+
+            console.log(worksheet);
+
+            currentCvl.values.splice(0, currentCvl.values.length);
+            worksheet.eachRow(function (row, rowNumber) {
+                var cvlValue = {
+                    key: row.getCell('key').value,
+                    index: row.getCell('sortOrder').value
+                };
+
+                var existingCvlValue = currentCvl.values.find(value => {
+                    return value.key === cvlValue.key;
+                });
+                cvlValue.new = existingCvlValue === undefined;
+
+                if (currentCvl.dataType === "LocaleString") {
+                    var value = new Object();
+                    allLanguages.forEach(language => {
+                        value[language.name] = row.getCell(language.name).value;
+                    });
+                    cvlValue.value = value;
+                } else {
+                    cvlValue.value = row.getCell('value').value;
+                }
+
+                console.log(cvlValue);
+
+                saveCvlValue(cvlValue);
+
+                cvlValue.new = false;
+                currentCvl.values.push(cvlValue);
+            });
+        }
+
+        function errorHandler(evt) {
+            console.log("Error reading file");
+            console.log(evt);
+            console.log(evt.target);
+            console.log(evt.target.error);
         }
 
         function exportCvlValues() {
