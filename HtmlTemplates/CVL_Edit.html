@@ -321,10 +321,12 @@
             var foundValue = currentCvl.values.find(function (cvl) {
                 return cvl.key === cvlValue.key;
             });
-            foundValue.index = cvlValue.index;
-            foundValue.value = cvlValue.value;
-            foundValue.editing = false;
-            foundValue.new = false;
+            if (foundValue !== undefined) {
+                foundValue.index = cvlValue.index;
+                foundValue.value = cvlValue.value;
+                foundValue.editing = false;
+                foundValue.new = false;
+            }
         }
 
         function importCvlValues() {
