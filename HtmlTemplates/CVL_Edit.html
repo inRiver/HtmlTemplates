@@ -40,6 +40,9 @@
                     <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
                 </div>
             </div>
+            <div v-if="showProgress">
+                <p id="progressLocaleString"></p>
+            </div>
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
                     <tr>
@@ -88,6 +91,9 @@
                     <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
                     <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
                 </div>
+            </div>
+            <div v-if="showProgress">
+                <p id="progressString"></p>
             </div>
             <table class="table table-bordered table-hover table-sm">
                 <thead class="thead-light">
@@ -151,7 +157,8 @@
                 allCvls: [],
                 mode: "cvlListing",
                 currentCvl: null,
-                allLanguages: []
+                allLanguages: [],
+                showProgress: false
             },
             mounted: function () {
                 this.fetchAllCvls();
@@ -341,16 +348,20 @@
         }
 
         function loadHandlerXlsx(event) {
+            app.showProgress = true;
+
             var allLanguages = app.allLanguages;
             var currentCvl = app.currentCvl;
 
             var workbook = new ExcelJS.Workbook();
 
+            setProgress(0);
             workbook.xlsx.load(event.target.result).then(result => {
                 var worksheet = workbook.worksheets[0];
 
                 var cvlValues = [];
                 var keyIndexMap = [];
+                var numberOfElements = worksheet.rowCount - 1;
                 worksheet.eachRow(function (row, rowNumber) {
                     if (keyIndexMap.length === 0) {
                         fillKeyIndexMap(row, keyIndexMap);
@@ -375,8 +386,9 @@
                             cvlValue.value = row.values[getIndex(keyIndexMap, "Value")];
                         }
 
-                        console.log(cvlValue);
                         app.saveCvlValue(cvlValue);
+
+                        setProgress((rowNumber - 1) / numberOfElements * 100);
 
                         cvlValue.new = false;
                         cvlValues.push(cvlValue);
@@ -384,7 +396,22 @@
                 });
                 currentCvl.values.splice(0, currentCvl.values.length);
                 cvlValues.forEach(cvlValue => currentCvl.values.push(cvlValue));
+
+                app.showProgress = false;
             }).catch(err => alert(err));
+        }
+
+        function setProgress(progress) {
+            var progressText = "Import progress: " + Math.round(progress) + "%";
+
+            var progressLocaleString = document.getElementById("progressLocaleString");
+            if (progressLocaleString !== null && progressLocaleString !== undefined) {
+                progressLocaleString.innerHTML = progressText;
+            }
+            var progressString = document.getElementById("progressString");
+            if (progressString !== null && progressString !== undefined) {
+                progressString.innerHTML = progressText;
+            }
         }
 
         function fillKeyIndexMap(row, keyIndexMap) {
