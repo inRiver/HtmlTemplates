@@ -342,54 +342,62 @@
             var allLanguages = app.allLanguages;
             var currentCvl = app.currentCvl;
 
-            // var workbook = XLSX.read(event.target.result, { type: 'binary' });
-
             var workbook = new ExcelJS.Workbook();
 
-            workbook.xlsx.load(event.target.result);
-            console.log("Loaded");
-            console.log(workbook.e);
-            console.log(workbook.e.worksheets);
-            console.log(workbook.e.worksheets.length);
+            workbook.xlsx.load(event.target.result).then(result => {
+                var worksheet = workbook.worksheets[0];
 
-            var worksheet;
-            workbook.eachSheet(function (sheet, sheetId) {
-                console.log("sheetId = " + sheetId);
-                console.log(sheet);
-                worksheet = sheet;
-            });
+                var cvlValues = [];
+                var keyIndexMap = [];
+                worksheet.eachRow(function (row, rowNumber) {
+                    if (keyIndexMap.length === 0) {
+                        fillKeyIndexMap(row, keyIndexMap);
+                    } else {
+                        var cvlValue = {
+                            key: row.values[getIndex(keyIndexMap, "Key")],
+                            index: row.values[getIndex(keyIndexMap, "SortOrder")]
+                        };
 
-            console.log(worksheet);
+                        var existingCvlValue = currentCvl.values.find(value => {
+                            return value.key === cvlValue.key;
+                        });
+                        cvlValue.new = existingCvlValue === undefined;
 
-            currentCvl.values.splice(0, currentCvl.values.length);
-            worksheet.eachRow(function (row, rowNumber) {
-                var cvlValue = {
-                    key: row.getCell('key').value,
-                    index: row.getCell('sortOrder').value
-                };
+                        if (currentCvl.dataType === "LocaleString") {
+                            var value = new Object();
+                            allLanguages.forEach(language => {
+                                value[language.name] = row.values[getIndex(keyIndexMap, language.name)];
+                            });
+                            cvlValue.value = value;
+                        } else {
+                            cvlValue.value = row.values[getIndex(keyIndexMap, "Value")];
+                        }
 
-                var existingCvlValue = currentCvl.values.find(value => {
-                    return value.key === cvlValue.key;
+                        console.log(cvlValue);
+                        app.saveCvlValue(cvlValue);
+
+                        cvlValue.new = false;
+                        cvlValues.push(cvlValue);
+                    }
                 });
-                cvlValue.new = existingCvlValue === undefined;
+                currentCvl.values.splice(0, currentCvl.values.length);
+                cvlValues.forEach(cvlValue => currentCvl.values.push(cvlValue));
+            }).catch(err => alert(err));
+        }
 
-                if (currentCvl.dataType === "LocaleString") {
-                    var value = new Object();
-                    allLanguages.forEach(language => {
-                        value[language.name] = row.getCell(language.name).value;
-                    });
-                    cvlValue.value = value;
-                } else {
-                    cvlValue.value = row.getCell('value').value;
-                }
+        function fillKeyIndexMap(row, keyIndexMap) {
+            console.log(row);
+            for (var i = 0; i < row.values.length; i++) {
+                keyIndexMap.push({key: row.values[i], index: i});
+            }
+            console.log(keyIndexMap);
+        }
 
-                console.log(cvlValue);
-
-                saveCvlValue(cvlValue);
-
-                cvlValue.new = false;
-                currentCvl.values.push(cvlValue);
+        function getIndex(keyIndexMap, key) {
+            var keyIndex = keyIndexMap.find(item => {
+                return item.key === key;
             });
+            return keyIndex.index;
         }
 
         function errorHandler(evt) {
