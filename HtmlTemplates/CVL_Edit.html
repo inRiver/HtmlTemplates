@@ -1,0 +1,519 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>CVL Editor</title>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.0.0/animate.min.css" />
+</head>
+<body class="container mt-4">
+    <input type="file" id="hiddenFileInput" style="display: none" />
+<div id="app">
+    <div v-if="mode=='cvlListing'" class="animate__animated animate__fadeInDown">
+        <h2>CVL</h2>
+        <table class="table table-bordered table-hover table-sm">
+            <thead class="thead-light">
+            <tr>
+                <th class="col-xs-3">Id</th>
+                <th class="col-xs-2">Data Type</th>
+            </tr>
+            </thead>
+            <tbody v-for="cvl in allCvls">
+            <tr v-on:click="cvlValueEdit(cvl)">
+                <td>
+                    {{cvl.id}}
+                </td>
+                <td>
+                    {{cvl.dataType}}
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+    <div v-if="mode=='cvlEditLocaleString'" class="animate__animated animate__fadeInDown">
+        <div class="container p-3 my-3 border d-flex justify-content-between row">
+            <h2>{{cvlValueHeader}}</h2>
+            <div>
+                <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
+                <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
+                <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
+            </div>
+        </div>
+        <div class="row">
+            <p id="progressLocaleString"></p>
+        </div>
+        <div class="row">
+            <table class="table table-bordered table-hover table-sm">
+                <thead class="thead-light">
+                <tr>
+                    <th class="col-xs-3">Key</th>
+                    <th class="col-xs-2">Index</th>
+                    <th class="col-xs-4" v-for="language in allLanguages">{{language.displayName}}</th>
+                    <th class="col-xs-3"></th>
+                </tr>
+                </thead>
+                <tbody v-for="cvlValue in currentCvl.values">
+                <tr>
+                    <td>
+                        <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
+                        <div v-if="cvlValue.new">
+                            <input type="text" v-model="cvlValue.key"/>
+                        </div>
+                    </td>
+                    <td>
+                        <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
+                        <div v-if="cvlValue.editing">
+                            <input type="text" v-model="cvlValue.index"/>
+                        </div>
+                    </td>
+                    <td v-for="(language, index) in allLanguages">
+                        <div v-if="!cvlValue.editing">{{cvlValue.value[language.name]}}</div>
+                        <div v-if="cvlValue.editing">
+                            <input type="text" v-model="cvlValue.value[language.name]" :key="index"/>
+                        </div>
+                    </td>
+                    <td class="text-center">
+                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
+                        <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
+                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
+                        <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div v-if="mode=='cvlEditString'" class="animate__animated animate__fadeInDown">
+        <div class="container p-3 my-3 border d-flex justify-content-between row">
+            <h2>{{cvlValueHeader}}</h2>
+            <div>
+                <button class="btn btn-info" v-on:click="mode='cvlListing'">Back</button>
+                <button class="btn btn-info" v-on:click="addCvlValue()">Add CVL Value</button>
+                <button class="btn btn-info" v-on:click="importCvlValues()">Import CVL Values</button>
+                <button class="btn btn-info" v-on:click="exportCvlValues()">Export CVL Values</button>
+            </div>
+        </div>
+        <div class="row">
+            <p id="progressLocaleString"></p>
+        </div>
+        <div class="row"></div>
+        <table class="table table-bordered table-hover table-sm">
+            <thead class="thead-light">
+            <tr>
+                <th class="col-xs-3">Key</th>
+                <th class="col-xs-2">Index</th>
+                <th class="col-xs-4">Value</th>
+                <th class="col-xs-3"></th>
+            </tr>
+            </thead>
+            <tbody v-for="cvlValue in currentCvl.values">
+            <tr>
+                <td>
+                    <div v-if="!cvlValue.new">{{cvlValue.key}}</div>
+                    <div v-if="cvlValue.new">
+                        <input type="text" v-model="cvlValue.key"/>
+                    </div>
+                </td>
+                <td>
+                    <div v-if="!cvlValue.editing">{{cvlValue.index}}</div>
+                    <div v-if="cvlValue.editing">
+                        <input type="text" v-model="cvlValue.index"/>
+                    </div>
+                </td>
+                <td>
+                    <div v-if="!cvlValue.editing">{{cvlValue.value}}</div>
+                    <div v-if="cvlValue.editing">
+                        <input type="text" v-model="cvlValue.value"/>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="cvlValue.editing = !cvlValue.editing">Edit</button>
+                    <button class="btn btn-info" v-if="!cvlValue.editing" v-on:click="deleteCvlValue(cvlValue)">Delete</button>
+                    <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="saveCvlValue(cvlValue)">Save</button>
+                    <button class="btn btn-info" v-if="cvlValue.editing" v-on:click="cancelCvlValue(cvlValue)">Cancel</button>
+                </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.0/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/exceljs/dist/exceljs.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/1.3.8/FileSaver.min.js"></script>
+
+
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.11"></script>
+
+    <script>
+        var fallbackApiKey = "2eb0108ce0eefd1b959f3c0a96a27328";
+        var apiKey = fallbackApiKey;
+        var language = "en";
+        var baseUrl = "https://apieuw.productmarketingcloud.com/api/v1.0.0/";
+
+        var app = new Vue({
+            el: "#app",
+            data: {
+                allCvls: [],
+                mode: "cvlListing",
+                currentCvl: null,
+                allLanguages: []
+            },
+            mounted: function () {
+                this.fetchAllCvls();
+                this.fetchAllLanguages();
+
+                var xlf = document.getElementById('hiddenFileInput');
+                if (!xlf.addEventListener) return;
+                function handleFile(e) {
+                    doImport(e.target.files[0]);
+                }
+                xlf.addEventListener('change', handleFile, false);
+            },
+            computed: {
+                cvlValueHeader: function () {
+                    return "CVL Values for " + this.currentCvl.id;
+                }
+            },
+            methods: {
+                fetchAllCvls: function () {
+                    var self = this;
+                    $.getJSON(buildAjaxSettings("model/cvls", false), function (cvls) {
+                        cvls.forEach(function (item, index) {
+                            var cvlWithValues = item;
+                            cvlWithValues.values = [];
+                            self.allCvls.push(cvlWithValues);
+                        });
+                    });
+                },
+                fetchAllLanguages: function () {
+                    var self = this;
+                    $.getJSON(buildAjaxSettings("model/languages"), function (languages) {
+                        self.allLanguages = languages;
+                    });
+                },
+                cvlValueEdit: function (cvl) {
+                    fetchCvlValues(cvl);
+                    if (cvl.dataType === "LocaleString") {
+                        this.mode = "cvlEditLocaleString";
+                    }
+                    if (cvl.dataType === "String") {
+                        this.mode = "cvlEditString";
+                    }
+                    this.currentCvl = cvl;
+                },
+                addCvlValue: function () {
+                    var cvlValue = {
+                        key: "",
+                        value: [],
+                        index: null,
+                        editing: true,
+                        new: true
+                    };
+                    this.currentCvl.values.unshift(cvlValue);
+                },
+                deleteCvlValue: function (cvlValue) {
+                    if (confirm("Are you sure you want to delete CVL value with key " + cvlValue.key + "?")) {
+                        var self = this;
+                        var ajaxSettings =
+                            buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
+                        ajaxSettings.type = "DELETE";
+
+                        ajaxSettings.error = function (xhr) {
+                            alert(xhr.responseText);
+                        };
+                        ajaxSettings.complete = function () {
+                            removeCvlValueToCvl(self.currentCvl, cvlValue);
+                        };
+
+                        $.ajax(ajaxSettings);
+                    }
+                },
+                saveCvlValue: function (cvlValue) {
+                    if (cvlValue.index !== null) {
+                        cvlValue.index = parseInt(cvlValue.index);
+                    }
+
+                    var value = cvlValue.value;
+                    if (Array.isArray(value)) {
+                        value = new Object();
+                        for (var i = 0; i < this.allLanguages.length; i++) {
+                            var code = this.allLanguages[i].name;
+                            value[code] = cvlValue.value[code];
+                        }
+                    }
+
+                    var cvlValueToSend = { key: cvlValue.key, value: value, index: cvlValue.index };
+                    var ajaxSettings;
+                    var self = this;
+                    if (cvlValue.new) {
+                        ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values", false);
+                        ajaxSettings.data = JSON.stringify(cvlValueToSend);
+
+                        ajaxSettings.error = function (xhr) {
+                            alert(xhr.responseText);
+                        };
+                        ajaxSettings.success = function () {
+                            updateCvlValueToCvl(self.currentCvl, cvlValue);
+                        };
+
+                        $.post(ajaxSettings);
+                    } else { // PUT
+                        ajaxSettings = buildAjaxSettings("model/cvls/" + this.currentCvl.id + "/values/" + cvlValue.key, false);
+                        ajaxSettings.type = "PUT";
+                        ajaxSettings.data = JSON.stringify(cvlValueToSend);
+
+                        ajaxSettings.error = function (xhr) {
+                            alert(xhr.responseText);
+                        };
+                        ajaxSettings.success = function () {
+                            updateCvlValueToCvl(self.currentCvl, cvlValue);
+                        };
+
+                        $.ajax(ajaxSettings);
+                    }
+                },
+                cancelCvlValue: function (cvlValue) {
+                    if (cvlValue.new) {
+                        this.currentCvl.values.shift();
+                    }
+                    cvlValue.editing = false;
+                    cvlValue.new = false;
+                }
+            }
+        });
+
+        function fetchCvlValues(cvl) {
+            $.getJSON(buildAjaxSettings("model/cvls/" + cvl.id + "/values", false), function (cvlValues) {
+                cvl.values.splice(0, cvl.values.length);
+                cvlValues.forEach(function (cvlValue, index) {
+                    cvlValue.editing = false;
+                    cvlValue.new = false;
+
+                    cvl.values.push(cvlValue);
+                });
+            });
+        };
+
+        function buildAjaxSettings(restOperation, asyncOperation = true) {
+            var ajaxSettings = {
+                dataType: "json",
+                contentType: 'application/json',
+                headers: {
+                    'X-inRiver-APIKey': apiKey,
+                    'Accept': 'application/json',
+                    'Accept-Language': language
+                },
+                url: baseUrl + restOperation,
+                processData: true,
+                async: asyncOperation
+            };
+            return ajaxSettings;
+        }
+
+        function removeCvlValueToCvl(currentCvl, cvlValue) {
+            var indexToRemove = -1;
+            currentCvl.values.forEach(function (value, index) {
+                if (value.key === cvlValue.key) {
+                    indexToRemove = index;
+                }
+            });
+            if (indexToRemove !== -1) {
+                currentCvl.values.splice(indexToRemove, 1);
+            }
+        }
+
+        function updateCvlValueToCvl(currentCvl, cvlValue) {
+            var foundValue = currentCvl.values.find(function (cvl) {
+                return cvl.key === cvlValue.key;
+            });
+            if (foundValue !== undefined) {
+                foundValue.index = cvlValue.index;
+                foundValue.value = cvlValue.value;
+                foundValue.editing = false;
+                foundValue.new = false;
+            }
+        }
+
+        function importCvlValues() {
+            $("#hiddenFileInput").trigger("click");
+        }
+
+        function doImport(filename) {
+            var reader = new FileReader();
+            reader.onload = loadHandlerXlsx;
+            reader.onerror = errorHandler;
+            reader.readAsBinaryString(filename);
+        }
+
+        function loadHandlerXlsx(event) {
+            var allLanguages = app.allLanguages;
+            var currentCvl = app.currentCvl;
+
+            var workbook = new ExcelJS.Workbook();
+
+            setProgress(0);
+            workbook.xlsx.load(event.target.result).then(result => {
+                var worksheet = workbook.worksheets[0];
+
+                var cvlValues = [];
+                var keyIndexMap = [];
+                var numberOfElements = worksheet.rowCount - 1;
+                worksheet.eachRow(function (row, rowNumber) {
+                    if (keyIndexMap.length === 0) {
+                        fillKeyIndexMap(row, keyIndexMap);
+                    } else {
+                        var cvlValue = {
+                            key: row.values[getIndex(keyIndexMap, "Key")],
+                            index: row.values[getIndex(keyIndexMap, "SortOrder")]
+                        };
+
+                        var existingCvlValue = currentCvl.values.find(value => {
+                            return value.key === cvlValue.key;
+                        });
+                        cvlValue.new = existingCvlValue === undefined;
+                        cvlValue.editing = false;
+
+                        if (currentCvl.dataType === "LocaleString") {
+                            var value = new Object();
+                            allLanguages.forEach(language => {
+                                value[language.name] = row.values[getIndex(keyIndexMap, language.name)];
+                            });
+                            cvlValue.value = value;
+                        } else {
+                            cvlValue.value = row.values[getIndex(keyIndexMap, "Value")];
+                        }
+
+                        app.saveCvlValue(cvlValue);
+
+                        setProgress((rowNumber - 1) / numberOfElements * 100);
+
+                        cvlValue.new = false;
+                        cvlValues.push(cvlValue);
+                    }
+                });
+
+                cvlValues = fillUpOldEntriesNotInExcel(cvlValues, currentCvl.values);
+
+                currentCvl.values.splice(0, currentCvl.values.length);
+                cvlValues.forEach(cvlValue => currentCvl.values.push(cvlValue));
+
+                setProgress(-1);
+            }).catch(err => alert(err));
+        }
+
+        function setProgress(progress) {
+            var progressText = "";
+            if (progress >= 0)
+            {
+                // progressText = "Import progress: " + Math.round(progress) + "%";
+                progressText = "Please wait! Importing! Be patient...";
+            }
+
+            var progressLocaleString = document.getElementById("progressLocaleString");
+            if (progressLocaleString !== null && progressLocaleString !== undefined) {
+                progressLocaleString.innerHTML = progressText;
+            }
+            var progressString = document.getElementById("progressString");
+            if (progressString !== null && progressString !== undefined) {
+                progressString.innerHTML = progressText;
+            }
+        }
+
+        function fillKeyIndexMap(row, keyIndexMap) {
+            console.log(row);
+            for (var i = 0; i < row.values.length; i++) {
+                keyIndexMap.push({key: row.values[i], index: i});
+            }
+            console.log(keyIndexMap);
+        }
+
+        function getIndex(keyIndexMap, key) {
+            var keyIndex = keyIndexMap.find(item => {
+                return item.key === key;
+            });
+            return keyIndex.index;
+        }
+
+        function fillUpOldEntriesNotInExcel(newCvlValues, oldCvlValues) {
+            oldCvlValues.forEach(cvlValue => {
+                var foundCvlValue = newCvlValues.find(value => {
+                    return value.key === cvlValue.key;
+                });
+                if (foundCvlValue === undefined) {
+                    newCvlValues.push(cvlValue);
+                }
+            });
+            return newCvlValues;
+        }
+
+        function errorHandler(evt) {
+            console.log("Error reading file");
+            console.log(evt);
+            console.log(evt.target);
+            console.log(evt.target.error);
+        }
+
+        function exportCvlValues() {
+            var allLanguages = app.allLanguages;
+            var currentCvl = app.currentCvl;
+
+            var workbook = new ExcelJS.Workbook();
+            var workSheet = workbook.addWorksheet(currentCvl.id);
+
+            var columns = [
+                { header: 'Key', key: 'key' },
+                { header: 'ParentKey', key: 'parentKey' },
+                { header: 'SortOrder', key: 'sortOrder' },
+                { header: 'Deactivated', key: 'deactivated' }
+            ];
+
+            if (currentCvl.dataType === "LocaleString") {
+                allLanguages.forEach(language => {
+                    columns.push(
+                        {
+                            header: language.name,
+                            key: language.name
+                        });
+                });
+
+                workSheet.columns = columns;
+
+                currentCvl.values.forEach(cvlValue => {
+                    var row = {
+                        key: cvlValue.key,
+                        sortOrder: cvlValue.index
+                    };
+                    allLanguages.forEach(language => {
+                        row[language.name] = cvlValue.value[language.name];
+                    });
+                    console.log(row);
+                    workSheet.addRow(row);
+                });
+            } else {
+                columns.push({ header: "Value", key: "value" });
+                workSheet.columns = columns;
+
+                currentCvl.values.forEach(cvlValue => {
+                    var row = {
+                        key: cvlValue.key,
+                        sortOrder: cvlValue.index,
+                        value: cvlValue.value
+                    };
+                    workSheet.addRow(row);
+                });
+            }
+
+            var filename = "cvl_values_" + currentCvl.id + ".xlsx";
+            workbook.xlsx.writeBuffer()
+                .then(buffer => saveAs(new Blob([buffer]), filename))
+                .catch(err => console.log('Error writing excel export', err));
+        }
+    </script>
+
+</body>
+</html>
